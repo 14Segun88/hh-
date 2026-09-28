@@ -1,32 +1,31 @@
 # ==============================================================================
-# ПРОФИЛЬ КАНДИДАТА (CANDIDATE PROFILE)
-# Используется локальной Qwen и облачной NIM для точного скоринга,
-# генерации персонализированных сопроводительных писем и заполнения анкет.
+# ПРОФИЛЬ КАНДИДАТА: САЛЮК ГЕОРГИЙ МИХАЙЛОВИЧ
 # ==============================================================================
 
 personal_info:
-  full_name: "Иван Иванов"
-  contact_phone: "+7 999 000-00-00"
-  contact_telegram: "@my_telegram_handle"
-  email: "candidate@example.com"
-  city: "Москва"
+  full_name: "Салюк Георгий Михайлович"
+  contact_phone: "+7 (918) 045-25-04"
+  contact_telegram: "@saljuk_gm"
+  email: "d-saljuk@rambler.ru"
+  city: "Краснодар"
   citizenship: "РФ"
   relocation_ready: false
   work_permit: ["РФ"]
 
 career:
   target_roles:
-    - "Senior Python Developer"
-    - "Backend Tech Lead"
-    - "Python / Go Software Engineer"
-  target_salary_net_rub: 300000
-  minimum_salary_net_rub: 250000
+    - "Руководитель отдела продаж"
+    - "РОП"
+    - "Head of Sales"
+    - "Директор по продажам"
+  target_salary_net_rub: 200000
+  minimum_salary_net_rub: 150000
   preferred_currency: "RUR"
   employment_type:
     - "Полная занятость"
   work_format:
     - "Удаленная работа"
-    - "Гибрид (Москва)"
+    - "Гибрид"
   legal_entities_allowed:
     - "ТК РФ"
     - "ИП"
@@ -34,35 +33,33 @@ career:
 
 skills:
   primary_stack:
-    - "Python 3.10+"
-    - "Asyncio"
-    - "FastAPI"
-    - "PostgreSQL"
-    - "Redis"
-    - "Docker"
-    - "Kubernetes"
-    - "Kafka"
-    - "Git"
+    - "Управление отделом продаж (РОП)"
+    - "Построение системы B2B продаж"
+    - "Разработка и внедрение KPI"
+    - "Найм, адаптация и обучение менеджеров"
+    - "Аудит и контроль воронки продаж"
+    - "AmoCRM / Bitrix24"
+    - "Стратегическое планирование и декомпозиция планов"
+    - "Переговоры с первыми лицами (LTV, крупные чеки)"
   secondary_stack:
-    - "Go (Golang)"
-    - "ClickHouse"
-    - "ElasticSearch"
-    - "gRPC"
-    - "CI/CD (GitLab, GitHub Actions)"
-    - "Playwright / Selenium"
+    - "Бюджетирование и оптимизация затрат"
+    - "Анализ рынка и конкурентной среды"
+    - "Разработка регламентов и скриптов"
+    - "Управление корпоративной культурой и мотивацией"
   years_of_experience: 6
 
 experience_summary: >
-  Опыт в бэкенд-разработке более 6 лет. Проектирование микросервисной архитектуры
-  на Python (FastAPI, Asyncio) и Go. Высоконагруженные системы, обработка очередей
-  в Kafka, оптимизация сложных SQL-запросов в PostgreSQL и ClickHouse. Опыт внедрения
-  CI/CD, контейнеризации в k8s, написание модульных и e2e тестов.
+  Опыт в сфере продаж более 5 лет 10 месяцев, из них более 3 лет в качестве
+  Руководителя отдела продаж (РОП) в B2B, финансовом и юридическом консалтинге.
+  Успешный опыт построения отделов продаж с нуля и масштабирования действующих команд:
+  внедрение сквозных KPI, систем мотивации, стандартов работы в CRM, проведение тренингов,
+  регулярный аудит звонков и переписок. Достижение стабильного выполнения планов продаж
+  и повышение LTV ключевых клиентов.
 
-# Факты для автоматического заполнения стандартных опросников работодателей (Qwen Tier 1):
 questionnaire_facts:
-  english_level: "B2 (Upper-Intermediate) — свободное чтение документации, прохождение интервью"
-  military_service: "Не подлежит / вопрос решен"
-  driver_license: "Категория B"
+  english_level: "Базовый (A2) / Чтение профессиональной литературы"
+  military_service: "Вопрос решен"
+  driver_license: "Категория А"
   notice_period_weeks: 2
-  highest_education: "Высшее техническое"
+  highest_education: "Высшее (КГУФКСТ, 2022 — Менеджмент организации)"
   has_own_equipment: true

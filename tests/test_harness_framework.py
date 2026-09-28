@@ -36,22 +36,22 @@ def test_harness_loader():
     assert draft_task.is_effect_allowed("draft_db")
 
     # 4. Lessons
-    assert "Клише" in loader.lessons or "Asyncio" in loader.lessons
+    assert "клише" in loader.lessons.lower() or "kpi" in loader.lessons.lower()
 
 
 def test_prd_tag_filtering():
     loader = HarnessLoader()
-    # Filter backend facts
-    backend_facts = loader.prd.get_facts_by_tags(["backend"])
-    assert len(backend_facts) > 0
-    for f in backend_facts:
-        assert any(t in ["backend", "python", "db", "storage", "highload", "secondary"] for t in f.tags)
+    # Filter sales / management facts
+    sales_facts = loader.prd.get_facts_by_tags(["sales"])
+    assert len(sales_facts) > 0
+    for f in sales_facts:
+        assert any(t in ["sales", "management", "rop", "b2b", "crm", "leadership"] for t in f.tags)
 
     # Filter forms facts
     form_facts = loader.prd.get_facts_by_tags(["forms"])
     assert len(form_facts) > 0
     form_ids = [f.id for f in form_facts]
-    assert "english_level" in form_ids or "experience_years" in form_ids
+    assert "location_city" in form_ids or "full_name" in form_ids or "education" in form_ids
 
 
 def test_prompt_builder():
@@ -60,12 +60,12 @@ def test_prompt_builder():
 
     # Test score prompt
     score_prompt = builder.build_score_vacancy_prompt(
-        vacancy_title="Senior Python Engineer",
-        vacancy_description="Разработка сервисов на FastAPI и PostgreSQL.",
+        vacancy_title="Руководитель отдела продаж B2B",
+        vacancy_description="Построение системы продаж, внедрение KPI и AmoCRM.",
     )
     assert len(score_prompt) == 2
-    assert "Senior Python Engineer" in score_prompt[1]["content"]
-    assert "FastAPI" in score_prompt[1]["content"]
+    assert "Руководитель отдела продаж B2B" in score_prompt[1]["content"]
+    assert "AmoCRM" in score_prompt[1]["content"]
 
     # Test draft prompt
     draft_prompt = builder.build_draft_reply_prompt(

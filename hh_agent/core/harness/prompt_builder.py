@@ -25,8 +25,8 @@ class PromptBuilder:
     ) -> List[Dict[str, str]]:
         """Assemble lean prompt for task: score_vacancy (Qwen Local)."""
         prd = self.loader.prd
-        # Filter facts relevant to backend/architecture
-        facts = prd.get_facts_by_tags(["backend", "core", "db", "web"])
+        # Filter facts relevant to candidate core competencies
+        facts = prd.get_facts_by_tags(["management", "sales", "rop", "b2b", "crm", "leadership", "backend", "core"])
         facts_text = "\n".join(f"- {f.text}" for f in facts)
 
         wants_summary = (
@@ -37,17 +37,17 @@ class PromptBuilder:
         )
 
         system_msg = (
-            "Ты — строгий технический скринер. Твоя задача — сопоставить вакансию с проверенными фактами кандидата.\n"
+            "Ты — строгий HR-скринер и карьерный консультант. Твоя задача — сопоставить вакансию с проверенными фактами кандидата.\n"
             "ПРАВИЛО: Опирайся ТОЛЬКО на предоставленные факты кандидата. Не додумывай несуществующий опыт.\n"
             "Верни СТРОГО валидный JSON без markdown:\n"
             "{\n"
-            '  "salary_min": 250000 или null,\n'
-            '  "salary_max": 350000 или null,\n'
+            '  "salary_min": 150000 или null,\n'
+            '  "salary_max": 250000 или null,\n'
             '  "currency": "RUR",\n'
-            '  "tech_stack": ["Python", "FastAPI"],\n'
+            '  "tech_stack": ["B2B продажи", "Управление командой", "CRM", "KPI"],\n'
             '  "red_flags": [],\n'
             '  "match_score": 85,\n'
-            '  "summary_reasoning": "Четкое обоснование",\n'
+            '  "summary_reasoning": "Четкое обоснование соответствия",\n'
             '  "is_suitable": true\n'
             "}"
         )
@@ -77,7 +77,7 @@ class PromptBuilder:
         lessons = self.loader.lessons
 
         # Select relevant facts
-        facts = prd.get_facts_by_tags(["backend", "core", "highload", "db"])
+        facts = prd.get_facts_by_tags(["management", "sales", "rop", "b2b", "kpi", "crm", "leadership", "backend", "core", "highload", "db"])
         facts_text = "\n".join(f"- {f.text}" for f in facts)
 
         never_disclose_text = "\n".join(f"- {nd}" for f in prd.never_disclose for nd in [f])
