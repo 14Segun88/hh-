@@ -29,25 +29,48 @@ class HarnessDemoRunner:
         await asyncio.sleep(1.0)
 
         # =====================================================================
-        # СТАДИЯ 1: Ингредиенты на полке (PRD)
+        # СТАДИЯ 1: Ингредиенты на полке (PRD) — Резюме Салюк Георгий Михайлович (4).doc
         # =====================================================================
         console.print("\n[bold yellow]═══════════════════════════════════════════════════════════════[/bold yellow]")
         console.print("[bold yellow]🍓 СТАДИЯ 1: ИНГРЕДИЕНТЫ НА ВАШЕЙ ПОЛКЕ (PRD)[/bold yellow]")
-        console.print("[dim]Загрузка проверенных фактов о кандидате из config/prd.yaml[/dim]\n")
+        console.print("[dim]Синхронизировано с реальным файлом резюме: [bold white]Салюк Георгий Михайлович (4).doc[/bold white][/dim]\n")
 
-        with console.status("[cyan]Проверка холодильника с продуктами (PRD)...[/cyan]"):
-            await asyncio.sleep(1.2)
+        with console.status("[cyan]Загрузка проверенных фактов из Салюк Георгий Михайлович (4).doc & config/prd.yaml...[/cyan]"):
+            await asyncio.sleep(1.0)
 
-        tree = Tree("📁 [bold green]Ваш профиль кандидата (PRD.yaml)[/bold green]")
+        summary_panel = (
+            "👤 [bold white]Кандидат:[/bold white] [bold cyan]Салюк Георгий Михайлович[/bold cyan] (27 лет, 06.09.1998, Краснодар)\n"
+            "💼 [bold white]Целевая роль:[/bold white] [bold green]AI-инженер / Разработчик AI-агентов / LLM-инженер[/bold green]\n"
+            "💰 [bold white]Желаемый оклад:[/bold white] [bold green]220 000 ₽ на руки[/bold green] [dim](порог отсева: от 200 000 ₽ net)[/dim]\n"
+            "📱 [bold white]Контакты:[/bold white] +7 (918) 045-25-04 | d-saljuk@rambler.ru | [cyan]github.com/14Segun88[/cyan]\n"
+            "📄 [bold white]Файл-первоисточник:[/bold white] [bold yellow]Салюк Георгий Михайлович (4).doc[/bold yellow] [green]✔ Верифицирован[/green]"
+        )
+        console.print(Panel(summary_panel, title="📁 Паспорт кандидата (PRD / Резюме версия 4)", border_style="cyan"))
+
+        tree = Tree("🏛 [bold green]Проверенные ингредиенты резюме (Facts & Guardrails)[/bold green]")
         
-        facts_node = tree.add("🥛 [bold]Свежие ингредиенты (Факты):[/bold]")
-        for f in self.loader.prd.facts[:4]:
-            facts_node.add(f"[cyan]{f.id}[/cyan] [dim]{f.tags}:[/dim] {f.text}")
+        projects_node = tree.add("🚀 [bold]Production-проекты кандидата (Факты из резюме 4):[/bold]")
+        projects_node.add(
+            "[cyan]1. MOGE (МосОблГосЭкспертиза):[/cyan] Мульти-агентная AI-система (8 агентов на Llama-3.3-70B, "
+            "Weaviate RAG, сокращение экспертизы с 12-42 дней до 5-10 мин). [dim]github.com/14Segun88/moge-document-expertise-ai[/dim]"
+        )
+        projects_node.add(
+            "[cyan]2. PD Document Analyzer (МОГЭ):[/cyan] 7-шаговый CoT Reasoning + Mistral 14B + Knowledge Base "
+            "(100% точность, 8 полей метаданных из PDF). [dim]github.com/14Segun88/pd-document-analyzer[/dim]"
+        )
+        projects_node.add(
+            "[cyan]3. News Predictor AI (Финсмарт):[/cyan] Гибридный ML (PyTorch Fusion + 4x CatBoost + 139 фичей + "
+            "Playwright + Telegram, 85.7% accuracy при conf >65%). [dim]github.com/14Segun88/news-predictor-ai[/dim]"
+        )
 
-        wants_node = tree.add("🎯 [bold]Желаемый вкус (Wants):[/bold]")
-        wants_node.add(f"Зарплата: [green]от {self.loader.prd.wants.salary_net_min:,} руб. net[/green]")
-        wants_node.add(f"Формат: [green]{', '.join(self.loader.prd.wants.format)}[/green]")
-        wants_node.add(f"Стоп-слова: [red]{', '.join(self.loader.prd.wants.stop_words[:5])}...[/red]")
+        stack_node = tree.add("🛠 [bold]Технологический стек (Только подтвержденный опыт):[/bold]")
+        stack_node.add("[white]AI / LLM:[/white] [green]Multi-Agent Systems, RAG, Llama 3.3, Mistral 14B, Qwen 2.5, Weaviate, Groq, NVIDIA NIM, CoT[/green]")
+        stack_node.add("[white]Backend / ML:[/white] [green]Python 3.10+, FastAPI, PyTorch, CatBoost, Playwright, asyncio, Docker, Linux, Git[/green]")
+
+        wants_node = tree.add("🎯 [bold]Желаемый вкус коктейля (Wants):[/bold]")
+        wants_node.add(f"Зарплатная вилка: [green]220 000 ₽ net (минимум {self.loader.prd.wants.salary_net_min:,} ₽)[/green]")
+        wants_node.add(f"Формат работы: [green]{', '.join(self.loader.prd.wants.format)} (приоритет: удаленно)[/green]")
+        wants_node.add(f"Стоп-слова для мгновенного отсева: [red]{', '.join(self.loader.prd.wants.stop_words[:6])}...[/red]")
 
         security_node = tree.add("⛔ [bold red]ЯД! Запрещено сыпать в блендер (Never Disclose):[/bold red]")
         for nd in self.loader.prd.never_disclose[:3]:

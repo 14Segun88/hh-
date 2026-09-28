@@ -95,7 +95,7 @@ wants:
     - "remote"           # удаленная работа в приоритете
     - "hybrid"           # гибридный формат
   salary_net_min: 200000 # чистыми на руки (руб.)
-  salary_net_target: 250000
+  salary_net_target: 220000 # из резюме Салюк Георгий Михайлович (4).doc: 220 000 ₽ на руки
   currency: "RUR"
   contracts_allowed:
     - "ТК РФ"

@@ -20,7 +20,8 @@ career:
     - "LLM-инженер"
     - "AI Engineer"
     - "ML-инженер (LLM / RAG / Agents)"
-  target_salary_net_rub: 250000
+# ИСТОЧНИК: Салюк Георгий Михайлович (4).doc
+  target_salary_net_rub: 220000 # 220 000 ₽ на руки из резюме
   minimum_salary_net_rub: 200000
   preferred_currency: "RUR"
   employment_type:
