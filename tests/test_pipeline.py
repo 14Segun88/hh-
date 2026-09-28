@@ -52,6 +52,36 @@ class MockLocalQwenClient:
             short_summary=message_text[:50],
         )
 
+    def _extract_json_block(self, text: str):
+        import json
+        return json.loads(text)
+
+    async def _chat_completion(self, messages, temperature=0.1):
+        import json
+        user_content = messages[-1]["content"] if messages else ""
+        # Check if the vacancy itself (not the wants instructions) contains stop-words
+        if "Junior Стажер" in user_content or "1C Developer" in user_content:
+            return json.dumps({
+                "salary_min": None,
+                "salary_max": None,
+                "currency": "RUR",
+                "tech_stack": [],
+                "red_flags": ["Стажировка"],
+                "match_score": 0,
+                "summary_reasoning": "Стоп-слова",
+                "is_suitable": False,
+            })
+        return json.dumps({
+            "salary_min": 280000,
+            "salary_max": 360000,
+            "currency": "RUR",
+            "tech_stack": ["Python", "FastAPI", "PostgreSQL"],
+            "red_flags": [],
+            "match_score": 88,
+            "summary_reasoning": "Отличное совпадение",
+            "is_suitable": True,
+        })
+
     async def parse_questionnaire_facts(self, questions, candidate_profile):
         return QuestionnaireSolution(
             answers={"Опыт": f"{candidate_profile.skills.years_of_experience} лет"},
@@ -60,6 +90,18 @@ class MockLocalQwenClient:
 
 
 class MockNvidiaNimClient:
+    def _extract_json_block(self, text: str):
+        import json
+        return json.loads(text)
+
+    async def _chat_completion(self, messages, temperature=0.3):
+        import json
+        return json.dumps({
+            "reply_text": "Добрый день! Имею более 6 лет опыта в Python бэкенде...",
+            "tone": "Деловой, уверенный",
+            "key_points": ["FastAPI", "PostgreSQL"],
+        })
+
     async def generate_deep_dossier(self, vacancy_title, company_name, vacancy_description, fast_analysis, candidate_profile):
         return DeepEmployerDossier(
             company_overview="Крупная FinTech компания с современным стеком.",

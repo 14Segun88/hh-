@@ -1,0 +1,26 @@
+id: draft_reply
+description: "Генерация сильного сопроводительного письма или ответа в чат работодателю"
+model: nim # Облачная большая модель NVIDIA NIM (Llama 3.3 70B / Nemotron)
+
+input_sources:
+  - context_type # "cover_letter" или "chat_negotiation"
+  - target_text # Текст вакансии или входящее сообщение
+  - company_name
+  - prd.facts:
+      tags: [backend, core, db, highload]
+  - prd.wants
+  - lessons # Живые выводы из lessons.md
+
+max_input_tokens: 1500
+
+output_schema:
+  type: object
+  properties:
+    reply_text: { type: string }
+    tone: { type: string }
+    key_points: { type: array, items: { type: string } }
+  required: [reply_text]
+
+# Разрешено сохранять черновик в БД и буфер. Отправка в сеть зависит от политики сценария.
+allowed_effects:
+  - draft_db

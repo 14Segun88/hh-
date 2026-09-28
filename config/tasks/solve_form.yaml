@@ -1,0 +1,30 @@
+id: solve_form
+description: "Подстановка проверенных фактов из профиля в опросник работодателя"
+model: local # Локальная Qwen 2.5 7B
+
+input_sources:
+  - questions_list
+  - prd.facts:
+      tags: [forms, legal, general, availability]
+  - prd.never_disclose
+
+max_input_tokens: 800
+
+output_schema:
+  type: object
+  properties:
+    answers:
+      type: object
+      description: "Словарь {question_id_или_текст: точный_ответ}"
+    missing_facts:
+      type: array
+      items: { type: string }
+      description: "Вопросы, на которые нет фактов в prd.yaml"
+    requires_human:
+      type: boolean
+      description: "true, если вопрос затронул конфиденциальные данные или требует код"
+  required: [answers, requires_human]
+
+# Разрешено только заполнять поля формы, но не нажимать финальный сабмит без верификации
+allowed_effects:
+  - fill_dom_inputs

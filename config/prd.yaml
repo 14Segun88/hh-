@@ -1,0 +1,97 @@
+# ==============================================================================
+# PRD: СТРАТЕГИЯ КАНДИДАТА, ПРЕДПОЧТЕНИЯ И ВЕРИФИЦИРОВАННЫЕ ФАКТЫ
+# Модель использует ТОЛЬКО эти факты. Всё, чего здесь нет, модели запрещено выдумывать.
+# ==============================================================================
+
+facts:
+  # Технический стек (backend)
+  - id: python_core
+    tags: [backend, python, core]
+    text: "Python 3.10+, глубокое знание Asyncio, typing, OOP, многопоточность и асинхронные паттерны."
+
+  - id: frameworks_backend
+    tags: [backend, python, web]
+    text: "FastAPI, Starlette, Pydantic v2, проектирование REST API, микросервисная архитектура."
+
+  - id: databases
+    tags: [backend, db, storage]
+    text: "PostgreSQL (сложные запросы, индексы, оптимизация планов EXPLAIN), Redis (кэширование, pub/sub), ClickHouse."
+
+  - id: devops_containers
+    tags: [devops, infra, backend]
+    text: "Docker, Docker Compose, Kubernetes (развертывание подов, ConfigMap, Secrets), CI/CD (GitLab, GitHub Actions)."
+
+  - id: message_brokers
+    tags: [backend, architecture, highload]
+    text: "Kafka (producer/consumer, partitioning, ack modes), RabbitMQ."
+
+  - id: secondary_stack
+    tags: [backend, secondary]
+    text: "Базовый практический опыт на Go (Golang) — микросервисы, gRPC, базовый синтаксис."
+
+  # Факты для автоматических опросников (forms)
+  - id: experience_years
+    tags: [forms, general]
+    text: "6+ лет коммерческой разработки в сфере backend / IT."
+
+  - id: english_level
+    tags: [forms, general]
+    text: "B2 (Upper-Intermediate) — чтение техдокументации, переписка, прохождение собеседований."
+
+  - id: location_city
+    tags: [forms, general]
+    text: "Москва, Россия."
+
+  - id: citizenship
+    tags: [forms, legal]
+    text: "Гражданство РФ, постоянное проживание в РФ."
+
+  - id: military_status
+    tags: [forms, legal]
+    text: "Военный билет в наличии / вопрос полностью решен."
+
+  - id: notice_period
+    tags: [forms, availability]
+    text: "Готовность приступить к работе через 2 недели (стандартный срок передачи дел)."
+
+  - id: equipment
+    tags: [forms, remote]
+    text: "Полностью оборудованное домашнее рабочее место (мощный ПК, быстрый интернет, резервный канал)."
+
+# Чего кандидат хочет от вакансии
+wants:
+  target_roles:
+    - "Senior Python Developer"
+    - "Backend Tech Lead"
+    - "Python / Go Software Engineer"
+  format:
+    - "remote"           # удаленная работа
+    - "hybrid"           # гибрид только для Москвы
+  salary_net_min: 250000 # чистыми на руки (руб.)
+  salary_net_target: 300000
+  currency: "RUR"
+  contracts_allowed:
+    - "ТК РФ"
+    - "ИП"
+    - "Самозанятый"
+  stop_words:
+    - "1C"
+    - "1С"
+    - "Битрикс"
+    - "Bitrix"
+    - "Junior"
+    - "Джуниор"
+    - "Стажер"
+    - "Стажировка"
+    - "PHP"
+    - "WordPress"
+    - "Холодные звонки"
+    - "Сетевой маркетинг"
+
+# Конфиденциальные данные: КАТЕГОРИЧЕСКИ запрещено передавать в откликах, формах и чатах
+never_disclose:
+  - "Паспортные данные (серия, номер, кем выдан)"
+  - "ИНН и СНИЛС"
+  - "Точный домашний адрес (разрешено только указывать город: Москва)"
+  - "Банковские реквизиты, номера счетов и карт"
+  - "Контактные данные текущего работодателя до подписания оффера"

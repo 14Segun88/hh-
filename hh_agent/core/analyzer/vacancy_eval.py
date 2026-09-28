@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, Optional
-from hh_agent.config import CandidateProfile, SearchRules, settings
+from hh_agent.config import CandidateProfile, SearchRules
+from hh_agent.core.harness.loader import HarnessLoader
+from hh_agent.core.harness.task_runner import TaskRunner
 from hh_agent.core.llm.local_client import LocalQwenClient
 from hh_agent.core.llm.nim_client import NvidiaNimClient
 from hh_agent.core.llm.schemas import DeepEmployerDossier, FastVacancyAnalysis
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class VacancyEvaluator:
-    """Two-tier vacancy analyzer: Fast Qwen scoring -> Deep NVIDIA NIM dossier."""
+    """Two-tier vacancy analyzer with Harness PRD, Specs, and Atomic Tasks enforcement."""
 
     def __init__(
         self,
@@ -21,20 +23,27 @@ class VacancyEvaluator:
         db: Database,
         profile: CandidateProfile,
         rules: SearchRules,
+        harness_loader: Optional[HarnessLoader] = None,
     ):
         self.local_client = local_client
         self.nim_client = nim_client
         self.db = db
         self.profile = profile
         self.rules = rules
+        self.harness_loader = harness_loader or HarnessLoader()
+        self.task_runner = TaskRunner(
+            loader=self.harness_loader,
+            local_client=self.local_client,
+            nim_client=self.nim_client,
+        )
 
     async def evaluate_vacancy(
         self, vacancy_raw: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Execute 2-tier analysis:
-        1. Fast Qwen extraction and scoring
-        2. Deep NIM dossier if score passes threshold
+        1. Fast Qwen extraction & scoring via atomic task 'score_vacancy'
+        2. Deep NIM dossier & tailored letter via atomic task 'draft_reply'
         """
         hh_id = vacancy_raw["hh_id"]
         title = vacancy_raw.get("title", "")
@@ -43,21 +52,32 @@ class VacancyEvaluator:
         url = vacancy_raw.get("url", "")
 
         # -------------------------------------------------------------
-        # Tier 1: Local Qwen 2.5 7B Fast Extraction & Preliminary Score
+        # Tier 1: Task score_vacancy (Local Qwen, 0 external effects)
         # -------------------------------------------------------------
         try:
-            fast_analysis: FastVacancyAnalysis = await self.local_client.analyze_vacancy(
+            task_res = await self.task_runner.run_score_vacancy(
+                vacancy_title=title,
+                vacancy_description=description,
+            )
+            raw_res = task_res["result"]
+            fast_analysis = FastVacancyAnalysis(
+                salary_min=raw_res.get("salary_min"),
+                salary_max=raw_res.get("salary_max"),
+                currency=raw_res.get("currency", "RUR"),
+                tech_stack=raw_res.get("tech_stack", []),
+                red_flags_detected=raw_res.get("red_flags", []),
+                stop_phrases_found=[],
+                match_score=raw_res.get("match_score", 50),
+                summary_reasoning=raw_res.get("summary_reasoning", ""),
+                is_suitable=raw_res.get("is_suitable", False),
+            )
+        except Exception as e:
+            logger.warning("Harness score_vacancy error on vacancy %s, using fallback: %s", hh_id, e)
+            fast_analysis = await self.local_client.analyze_vacancy(
                 vacancy_title=title,
                 vacancy_description=description,
                 candidate_profile=self.profile,
                 search_rules=self.rules,
-            )
-        except Exception as e:
-            logger.warning("Local Qwen analysis error on vacancy %s: %s", hh_id, e)
-            fast_analysis = FastVacancyAnalysis(
-                match_score=50,
-                summary_reasoning="Ошибка локального скоринга Qwen, назначен базовый балл",
-                is_suitable=False,
             )
 
         score = fast_analysis.match_score
@@ -72,10 +92,11 @@ class VacancyEvaluator:
             status = "QUALIFIED"
 
         # -------------------------------------------------------------
-        # Tier 2: Deep NVIDIA NIM Dossier (only if threshold met)
+        # Tier 2: Task draft_reply (NVIDIA NIM with PRD facts & lessons.md)
         # -------------------------------------------------------------
         if score >= self.rules.thresholds.min_score_for_nim_dossier:
             try:
+                # 1. Generate Deep Dossier from NIM
                 nim_dossier: DeepEmployerDossier = (
                     await self.nim_client.generate_deep_dossier(
                         vacancy_title=title,
@@ -93,14 +114,22 @@ class VacancyEvaluator:
                     f"### Стратегия интервью:\n{nim_dossier.interview_strategy}"
                 )
                 verdict_text = nim_dossier.final_verdict
-                cover_letter = nim_dossier.custom_cover_letter
+
+                # 2. Run draft_reply with empirical lessons from lessons.md
+                draft_res = await self.task_runner.run_draft_reply(
+                    context_type="cover_letter",
+                    target_text=description,
+                    company_name=company,
+                    scenario_id="cover_letter",
+                )
+                cover_letter = draft_res["result"].get("reply_text") or nim_dossier.custom_cover_letter
                 status = "DOSSIER_READY"
             except Exception as e:
-                logger.error("NVIDIA NIM dossier generation error on vacancy %s: %s", hh_id, e)
+                logger.error("NVIDIA NIM task error on vacancy %s: %s", hh_id, e)
                 dossier_text = "NIM API недоступен, досье не сформировано."
                 verdict_text = "Требуется ручной просмотр"
 
-        # Save to database
+        # Save record in database
         record = {
             "hh_id": hh_id,
             "title": title,

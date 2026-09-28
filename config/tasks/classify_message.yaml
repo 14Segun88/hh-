@@ -1,0 +1,24 @@
+id: classify_message
+description: "Мгновенная классификация входящего сообщения от работодателя"
+model: local # Локальная Qwen 2.5 7B
+
+input_sources:
+  - incoming_message_text
+  - company_name
+  - vacancy_title
+
+max_input_tokens: 600
+
+output_schema:
+  type: object
+  properties:
+    category:
+      type: string
+      enum: [INVITATION, QUESTION, REJECTION, SPAM, OTHER]
+    is_urgent: { type: boolean }
+    extracted_questions: { type: array, items: { type: string } }
+    proposed_dates: { type: array, items: { type: string } }
+    short_summary: { type: string }
+  required: [category, is_urgent, short_summary]
+
+allowed_effects: []

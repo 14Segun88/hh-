@@ -1,0 +1,53 @@
+# ==============================================================================
+# SPECS: СПЕЦИФИКАЦИИ СЦЕНАРИЕВ ПОВЕДЕНИЯ АГЕНТА
+# Определение ситуации, выбор атомарной задачи и политика подтверждения человеком.
+# ==============================================================================
+
+scenarios:
+  - id: direct_apply
+    description: "Стандартный отклик в один клик без сопроводительного письма и анкеты"
+    detect:
+      condition: "apply_button_available AND NOT cover_letter_required AND NOT questions_modal"
+    action: apply_direct
+    task: null
+    approval: none             # Автономно: нажимает кнопку без вопросов
+
+  - id: cover_letter
+    description: "Отклик требует или приветствует персонализированное сопроводительное письмо"
+    detect:
+      condition: "cover_letter_input_visible OR high_priority_vacancy"
+    action: draft_reply
+    task: draft_reply          # Запускает tasks/draft_reply.yaml
+    approval: semi_auto        # Отправляет черновик в Telegram или сразу шлет в режиме auto
+
+  - id: simple_form
+    description: "Форма из 1-4 стандартных фактологических вопросов работодателя"
+    detect:
+      condition: "questions_modal_visible AND all_questions_are_factual"
+    action: solve_form
+    task: solve_form           # Запускает tasks/solve_form.yaml
+    approval: none             # Заполняет автономно, если все факты есть в prd.yaml
+
+  - id: complex_test
+    description: "Тестовое задание, задача по программированию или сложный профильный опрос"
+    detect:
+      condition: "questions_modal_visible AND contains_coding_or_long_test"
+    action: REQUIRES_HUMAN     # СТОП-СИГНАЛ: нейросеть не отправляет код наугад
+    task: null
+    approval: required         # Строго требует участия соискателя через Telegram-уведомление
+
+  - id: external_site
+    description: "Отклик перенаправляет на внешний карьерный сайт работодателя"
+    detect:
+      condition: "redirect_to_external_domain"
+    action: save_link_and_skip # Сохраняет ссылку в БД, присылает ссылку в Telegram
+    task: null
+    approval: none
+
+  - id: incoming_chat
+    description: "Входящее сообщение от HR / рекрутера в откликах hh.ru"
+    detect:
+      condition: "unread_negotiation_message_detected"
+    action: classify_and_draft
+    task: classify_message     # Сначала tasks/classify_message.yaml, затем draft_reply.yaml
+    approval: semi_auto        # Готовит черновик ответа, подтверждение через Telegram

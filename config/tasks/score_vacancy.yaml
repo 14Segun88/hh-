@@ -1,0 +1,31 @@
+id: score_vacancy
+description: "Быстрый первичный скоринг и извлечение ключевых фактов вакансии"
+model: local # Исполняется на локальной Qwen 2.5 7B в LM Studio
+
+# Входные данные, собираемые PromptBuilder
+input_sources:
+  - vacancy_title
+  - vacancy_description
+  - prd.wants
+  - prd.facts:
+      tags: [backend, core, db, web]
+
+# Ограничение по токенам промпта (защита от перегрузки памяти)
+max_input_tokens: 1200
+
+# Строгая схема валидации вывода
+output_schema:
+  type: object
+  properties:
+    salary_min: { type: [integer, "null"] }
+    salary_max: { type: [integer, "null"] }
+    currency: { type: string, default: "RUR" }
+    tech_stack: { type: array, items: { type: string } }
+    red_flags: { type: array, items: { type: string } }
+    match_score: { type: integer, minimum: 0, maximum: 100 }
+    summary_reasoning: { type: string }
+    is_suitable: { type: boolean }
+  required: [match_score, is_suitable, summary_reasoning]
+
+# Безопасность: задаче ЗАПРЕЩЕНО производить какие-либо внешние эффекты
+allowed_effects: []
