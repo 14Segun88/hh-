@@ -33,14 +33,29 @@ console = Console()
 async def check_is_logged_in(page) -> bool:
     """Check if current session is authenticated as job seeker on hh.ru."""
     try:
+        # 1. Check cookies in browser context
+        cookies = await page.context.cookies(["https://hh.ru", "https://api.hh.ru"])
+        for c in cookies:
+            if c.get("name") in ["hhtoken", "crypted_hhuid"] and len(c.get("value", "")) > 5:
+                return True
+
+        # 2. Check if page URL redirected away from login
+        url = page.url
+        if "account/login" not in url and "account/signup" not in url and ("hh.ru" in url):
+            login_btn = page.locator("a[data-qa='login']").or_(page.locator("text='Войти'").first)
+            if not await login_btn.is_visible(timeout=500):
+                return True
+
+        # 3. Check for typical profile markers
         profile_el = (
             page.locator("a[data-qa='mainmenu_myResumes']")
             .or_(page.locator("[data-qa='mainmenu_applicantProfile']"))
             .or_(page.locator("[data-qa='mainmenu_negotiations']"))
             .or_(page.locator("[data-qa='notifications-bell']"))
             .or_(page.locator(".supernova-icon_profile"))
+            .or_(page.locator("a[href*='/applicant/resumes']"))
         )
-        return await profile_el.first.is_visible(timeout=2000)
+        return await profile_el.first.is_visible(timeout=1000)
     except Exception:
         return False
 
@@ -147,36 +162,55 @@ class LiveVisualRunner:
         await page.goto(login_url, wait_until="domcontentloaded")
         await BrowserHarness.human_delay(1.0, 1.5)
 
+        # Re-check cookies after visiting hh.ru
+        if await check_is_logged_in(page):
+            console.print("[bold green]✔ Сессия обнаружена (активный вход hh.ru)[/bold green]\n")
+            return True
+
         await update_browser_hud(
             page,
             stage=2,
             title="ТРЕБУЕТСЯ ВХОД НА HH.RU",
-            details="<span style='color:#fbbf24;font-weight:700;'>Пожалуйста, войдите в аккаунт hh.ru прямо сейчас в этом окне (по SMS или паролю).</span><br>Агент автоматически продолжит работу сразу после входа!",
+            details="<span style='color:#fbbf24;font-weight:700;'>Пожалуйста, войдите в аккаунт hh.ru в этом окне (по SMS или паролю).</span><br>Или нажмите ENTER в терминале, если уже вошли!",
         )
 
         login_panel = (
             "⚠ [bold yellow]ВНИМАНИЕ: ДЛЯ РЕАЛЬНОГО ОТКЛИКА И ОТПРАВКИ ПИСЬМА ТРЕБУЕТСЯ ВХОД В HH.RU[/bold yellow]\n\n"
             "Работодатель на hh.ru принимает отклик только с прикрепленным резюме из вашего личного кабинета.\n"
-            "👉 [bold cyan]Пожалуйста, введите ваш номер телефона/почту и SMS-код прямо в открытом окне браузера.[/bold cyan]\n"
-            "[dim]Агент ожидает завершения входа... (сессия сохранится в data/browser_profile, повторный вход не потребуется)[/dim]"
+            "👉 [bold cyan]Войдите по номеру телефона/SMS в открытом окне браузера.[/bold cyan]\n"
+            "👉 [bold green]Если вы уже вошли — просто нажмите клавишу ENTER прямо в этом терминале![/bold green]"
         )
         console.print(Panel(login_panel, title="🔑 Авторизация на hh.ru", border_style="yellow"))
 
-        # Wait loop for login (up to 3 minutes)
+        loop = asyncio.get_event_loop()
+        user_pressed_enter = False
+
+        async def _wait_for_user_enter():
+            nonlocal user_pressed_enter
+            try:
+                await loop.run_in_executor(None, input, "\nНажмите ENTER, когда завершите вход (или дождитесь автодетекта): ")
+                user_pressed_enter = True
+            except Exception:
+                pass
+
+        enter_task = asyncio.create_task(_wait_for_user_enter())
+
         for second in range(90):
-            if await check_is_logged_in(page):
-                console.print("\n[bold green]✔ УСПЕШНЫЙ ВХОД! Сессия hh.ru сохранена в data/browser_profile.[/bold green]\n")
+            if user_pressed_enter or await check_is_logged_in(page):
+                if not enter_task.done():
+                    enter_task.cancel()
+                console.print("\n[bold green]✔ ВХОД ПОДТВЕРЖДЕН! Сессия hh.ru сохранена в data/browser_profile.[/bold green]\n")
                 await update_browser_hud(
                     page,
                     stage=2,
                     title="ВХОД ВЫПОЛНЕН",
                     details="<span style='color:#4ade80;font-weight:700;'>Авторизация успешна!</span> Переход к поиску свежих вакансий...",
                 )
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(1.0)
                 return True
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(1.5)
 
-        console.print("[red]Время ожидания входа истекло (180 сек). Запуск продолжается в демонстрационном режиме.[/red]")
+        console.print("[red]Время ожидания входа истекло (135 сек). Запуск продолжается в демонстрационном режиме.[/red]")
         return False
 
     async def run(
