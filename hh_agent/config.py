@@ -40,7 +40,7 @@ class CareerConfig(BaseModel):
 class SkillsConfig(BaseModel):
     primary_stack: List[str] = Field(default_factory=list)
     secondary_stack: List[str] = Field(default_factory=list)
-    years_of_experience: int = 5
+    years_of_experience: float = 3.5
 
 
 class CandidateProfile(BaseModel):

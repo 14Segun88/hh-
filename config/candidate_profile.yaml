@@ -1,5 +1,6 @@
 # ==============================================================================
 # ПРОФИЛЬ КАНДИДАТА: САЛЮК ГЕОРГИЙ МИХАЙЛОВИЧ
+# СПЕЦИАЛИЗАЦИЯ: AI-ИНЖЕНЕР / РАЗРАБОТЧИК AI-АГЕНТОВ / LLM-ИНЖЕНЕР
 # ==============================================================================
 
 personal_info:
@@ -14,12 +15,13 @@ personal_info:
 
 career:
   target_roles:
-    - "Руководитель отдела продаж"
-    - "РОП"
-    - "Head of Sales"
-    - "Директор по продажам"
-  target_salary_net_rub: 200000
-  minimum_salary_net_rub: 150000
+    - "AI-инженер"
+    - "Разработчик AI-агентов"
+    - "LLM-инженер"
+    - "AI Engineer"
+    - "ML-инженер (LLM / RAG / Agents)"
+  target_salary_net_rub: 250000
+  minimum_salary_net_rub: 200000
   preferred_currency: "RUR"
   employment_type:
     - "Полная занятость"
@@ -33,33 +35,35 @@ career:
 
 skills:
   primary_stack:
-    - "Управление отделом продаж (РОП)"
-    - "Построение системы B2B продаж"
-    - "Разработка и внедрение KPI"
-    - "Найм, адаптация и обучение менеджеров"
-    - "Аудит и контроль воронки продаж"
-    - "AmoCRM / Bitrix24"
-    - "Стратегическое планирование и декомпозиция планов"
-    - "Переговоры с первыми лицами (LTV, крупные чеки)"
+    - "AI Agents & Multi-Agent Systems"
+    - "LLM (Llama 3.3, Mistral, Qwen, GPT-4)"
+    - "RAG & Vector DB (Weaviate, sentence-transformers)"
+    - "Chain-of-Thought (CoT) Prompt Engineering"
+    - "Python 3.10+ (FastAPI, Asyncio, Flask)"
+    - "Local LLM Inference (LM Studio, Ollama, GGUF)"
+    - "Cloud LLM APIs (NVIDIA NIM, Groq, OpenAI)"
+    - "PyTorch & CatBoost"
+    - "Playwright (Headless browser automation)"
+    - "Docker, Linux, Git"
   secondary_stack:
-    - "Бюджетирование и оптимизация затрат"
-    - "Анализ рынка и конкурентной среды"
-    - "Разработка регламентов и скриптов"
-    - "Управление корпоративной культурой и мотивацией"
-  years_of_experience: 6
+    - "QLoRA Fine-Tuning"
+    - "SQLAlchemy, PostgreSQL"
+    - "Telegram Bot API (aiogram)"
+    - "PyMuPDF, PDF text & metadata extraction"
+  years_of_experience: 3.5
 
 experience_summary: >
-  Опыт в сфере продаж более 5 лет 10 месяцев, из них более 3 лет в качестве
-  Руководителя отдела продаж (РОП) в B2B, финансовом и юридическом консалтинге.
-  Успешный опыт построения отделов продаж с нуля и масштабирования действующих команд:
-  внедрение сквозных KPI, систем мотивации, стандартов работы в CRM, проведение тренингов,
-  регулярный аудит звонков и переписок. Достижение стабильного выполнения планов продаж
-  и повышение LTV ключевых клиентов.
+  Опыт в разработке AI-систем более 3.5 лет. Проектирование и внедрение в production
+  мульти-агентных систем (MOGE — 8 AI-агентов с оркестратором на Llama-3.3-70B для госэкспертизы,
+  сокращение цикла с 12-42 дней до 5-10 минут), CoT-пайплайнов извлечения данных из сложных PDF
+  с верификацией через Knowledge Base (PD Document Analyzer, 100% accuracy), а также гибридных
+  ML-моделей (News Predictor AI — PyTorch Fusion Network + CatBoost + Embeddings). Опыт развертывания
+  локальных моделей в LM Studio и работы с облачными API (NVIDIA NIM, Groq, OpenAI). GitHub: 14Segun88.
 
 questionnaire_facts:
-  english_level: "Базовый (A2) / Чтение профессиональной литературы"
+  english_level: "B2 (технический) — свободное чтение документации и статей на arXiv, ведение репозиториев"
   military_service: "Вопрос решен"
   driver_license: "Категория А"
-  notice_period_weeks: 2
-  highest_education: "Высшее (КГУФКСТ, 2022 — Менеджмент организации)"
+  notice_period_weeks: 1
+  highest_education: "Среднее образование"
   has_own_equipment: true

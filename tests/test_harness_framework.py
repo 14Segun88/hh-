@@ -36,22 +36,22 @@ def test_harness_loader():
     assert draft_task.is_effect_allowed("draft_db")
 
     # 4. Lessons
-    assert "клише" in loader.lessons.lower() or "kpi" in loader.lessons.lower()
+    assert "github" in loader.lessons.lower() or "moge" in loader.lessons.lower()
 
 
 def test_prd_tag_filtering():
     loader = HarnessLoader()
-    # Filter sales / management facts
-    sales_facts = loader.prd.get_facts_by_tags(["sales"])
-    assert len(sales_facts) > 0
-    for f in sales_facts:
-        assert any(t in ["sales", "management", "rop", "b2b", "crm", "leadership"] for t in f.tags)
+    # Filter AI / Agent facts
+    ai_facts = loader.prd.get_facts_by_tags(["ai"])
+    assert len(ai_facts) > 0
+    for f in ai_facts:
+        assert any(t in ["ai", "agents", "llm", "rag", "ml", "architecture"] for t in f.tags)
 
     # Filter forms facts
     form_facts = loader.prd.get_facts_by_tags(["forms"])
     assert len(form_facts) > 0
     form_ids = [f.id for f in form_facts]
-    assert "location_city" in form_ids or "full_name" in form_ids or "education" in form_ids
+    assert "location_city" in form_ids or "full_name" in form_ids or "driver_license" in form_ids
 
 
 def test_prompt_builder():
@@ -60,12 +60,12 @@ def test_prompt_builder():
 
     # Test score prompt
     score_prompt = builder.build_score_vacancy_prompt(
-        vacancy_title="Руководитель отдела продаж B2B",
-        vacancy_description="Построение системы продаж, внедрение KPI и AmoCRM.",
+        vacancy_title="Разработчик AI-агентов (Multi-Agent)",
+        vacancy_description="Разработка автономных агентов на базе Llama 3 и Weaviate.",
     )
     assert len(score_prompt) == 2
-    assert "Руководитель отдела продаж B2B" in score_prompt[1]["content"]
-    assert "AmoCRM" in score_prompt[1]["content"]
+    assert "Разработчик AI-агентов" in score_prompt[1]["content"]
+    assert "Weaviate" in score_prompt[1]["content"]
 
     # Test draft prompt
     draft_prompt = builder.build_draft_reply_prompt(

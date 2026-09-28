@@ -26,7 +26,7 @@ class PromptBuilder:
         """Assemble lean prompt for task: score_vacancy (Qwen Local)."""
         prd = self.loader.prd
         # Filter facts relevant to candidate core competencies
-        facts = prd.get_facts_by_tags(["management", "sales", "rop", "b2b", "crm", "leadership", "backend", "core"])
+        facts = prd.get_facts_by_tags(["ai", "agents", "llm", "rag", "ml", "python", "backend", "architecture", "reasoning", "automation", "core"])
         facts_text = "\n".join(f"- {f.text}" for f in facts)
 
         wants_summary = (
@@ -37,17 +37,17 @@ class PromptBuilder:
         )
 
         system_msg = (
-            "Ты — строгий HR-скринер и карьерный консультант. Твоя задача — сопоставить вакансию с проверенными фактами кандидата.\n"
+            "Ты — строгий технический скринер и эксперт по AI/LLM. Твоя задача — сопоставить вакансию с проверенными фактами кандидата.\n"
             "ПРАВИЛО: Опирайся ТОЛЬКО на предоставленные факты кандидата. Не додумывай несуществующий опыт.\n"
             "Верни СТРОГО валидный JSON без markdown:\n"
             "{\n"
-            '  "salary_min": 150000 или null,\n'
-            '  "salary_max": 250000 или null,\n'
+            '  "salary_min": 200000 или null,\n'
+            '  "salary_max": 280000 или null,\n'
             '  "currency": "RUR",\n'
-            '  "tech_stack": ["B2B продажи", "Управление командой", "CRM", "KPI"],\n'
+            '  "tech_stack": ["Python", "AI Agents", "LLM", "RAG", "FastAPI"],\n'
             '  "red_flags": [],\n'
-            '  "match_score": 85,\n'
-            '  "summary_reasoning": "Четкое обоснование соответствия",\n'
+            '  "match_score": 88,\n'
+            '  "summary_reasoning": "Четкое обоснование соответствия стека и задач",\n'
             '  "is_suitable": true\n'
             "}"
         )
@@ -77,7 +77,7 @@ class PromptBuilder:
         lessons = self.loader.lessons
 
         # Select relevant facts
-        facts = prd.get_facts_by_tags(["management", "sales", "rop", "b2b", "kpi", "crm", "leadership", "backend", "core", "highload", "db"])
+        facts = prd.get_facts_by_tags(["ai", "agents", "llm", "rag", "ml", "python", "backend", "portfolio", "code"])
         facts_text = "\n".join(f"- {f.text}" for f in facts)
 
         never_disclose_text = "\n".join(f"- {nd}" for f in prd.never_disclose for nd in [f])

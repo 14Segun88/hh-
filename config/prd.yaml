@@ -1,45 +1,49 @@
 # ==============================================================================
 # PRD: РЕАЛЬНЫЙ ПРОФИЛЬ КАНДИДАТА: САЛЮК ГЕОРГИЙ МИХАЙЛОВИЧ
-# РОЛЬ: РУКОВОДИТЕЛЬ ОТДЕЛА ПРОДАЖ (РОП) / HEAD OF SALES
+# РОЛЬ: AI-ИНЖЕНЕР / РАЗРАБОТЧИК AI-АГЕНТОВ / LLM-ИНЖЕНЕР
 # ==============================================================================
 
 facts:
-  # Управленческий опыт и стратегия продаж (management, sales, rop)
-  - id: leadership_experience
-    tags: [management, sales, rop, leadership]
-    text: "Опыт работы в продажах более 5 лет 10 месяцев, из них более 3 лет на позициях Руководителя отдела продаж (РОП) в B2B, финансовом секторе и консалтинге."
+  # Мульти-агентные системы и оркестрация (ai, agents, llm)
+  - id: multi_agent_systems
+    tags: [ai, agents, llm, architecture]
+    text: "Проектирование и запуск мульти-агентных систем в production: архитектура из 8 специализированных AI-агентов с динамической маршрутизацией на базе Llama-3.3-70B (проект MOGE, сокращение времени экспертизы с 12-42 дней до 5-10 минут)."
 
-  - id: current_role_rbks
-    tags: [management, sales, rop, b2b]
-    text: "Текущая позиция (с октября 2023 по н.в.): Руководитель отдела продаж в 'Реестр Бизнеса Кредитных Систем' (РБКС) — построение системы продаж, разработка кадровой политики, стандартов работы и регламентов."
+  - id: cot_reasoning_and_extraction
+    tags: [ai, llm, reasoning, nlp]
+    text: "Разработка многошаговых Chain-of-Thought (CoT) пайплайнов для сложного извлечения структурированных данных из неструктурированных PDF с верификацией через Knowledge Base (проект PD Document Analyzer, точность 100% на известных документах)."
 
-  - id: team_building_hiring
-    tags: [management, hr, hiring, rop]
-    text: "Полный цикл формирования команды продаж: профилирование должностей, найм, адаптация, тренинги, аттестация менеджеров и создание эффективной корпоративной мотивации."
+  - id: rag_and_vector_databases
+    tags: [ai, rag, vector_db, search]
+    text: "Построение гибридных RAG-пайплайнов (BM25 + Vector Search) по нормативной документации в векторной базе Weaviate, работа с эмбеддингами через sentence-transformers."
 
-  - id: kpi_and_metrics
-    tags: [management, sales, analytics, kpi]
-    text: "Разработка, внедрение и контроль KPI, систем материальной и нематериальной мотивации. Мониторинг ключевых метрик воронки продаж, конверсий и кадровых показателей."
+  - id: llm_endpoints_and_local_models
+    tags: [ai, llm, infra, local]
+    text: "Глубокая практическая работа как с локальными LLM через LM Studio / Ollama (Mistral 14B Reasoning, Qwen 2.5), так и с облачными API (NVIDIA NIM, Groq Cloud, OpenAI API, Hugging Face)."
 
-  - id: strategy_and_planning
-    tags: [management, sales, strategy]
-    text: "Стратегическое планирование продаж: декомпозиция целей, прогнозирование объемов, анализ рынка и конкурентной среды, защита и выполнение планов перед учредителями."
+  - id: fine_tuning_and_quantization
+    tags: [ai, ml, qlora, models]
+    text: "Пайплайны дообучения моделей QLoRA (Qwen2.5-3B → квантование в GGUF) для кастомных доменных задач и офлайн-развертывания."
 
-  - id: crm_and_automation
-    tags: [sales, crm, tools]
-    text: "Глубокая экспертиза в работе и контроле CRM-систем (AmoCRM, Bitrix24), аудит ведения сделок, внедрение регламентов коммуникации с клиентами."
+  - id: ml_hybrid_systems
+    tags: [ml, pytorch, catboost, ai]
+    text: "Разработка гибридных ML-систем: объединение табличных данных (139 фичей), эмбеддингов знаний и сентимента через PyTorch Fusion Network + специализированные ансамбли CatBoost (проект News Predictor AI)."
 
-  - id: key_clients_negotiations
-    tags: [sales, b2b, negotiations]
-    text: "Личное ведение переговоров с ключевыми клиентами и первыми лицами компаний (LTV, крупные чеки), урегулирование сложных и конфликтных ситуаций."
+  - id: backend_and_async
+    tags: [backend, python, web]
+    text: "Python 3.10+, FastAPI, Flask, Asyncio, SQLAlchemy, Docker, Linux, Git, проектирование надежных микросервисов и интеграционных REST API."
 
-  - id: budget_and_costs
-    tags: [management, finance, rop]
-    text: "Управление бюджетом отдела продаж, контроль расходов на привлечение, оптимизация затрат и повышение маржинальности."
+  - id: browser_automation_playwright
+    tags: [automation, scraping, playwright]
+    text: "Парсинг и автоматизация браузера на Playwright: сбор данных с финансовых порталов, автоматическая проверка реестров (НОПРИЗ) в headless-режиме."
 
-  - id: previous_experience_conglomerate
-    tags: [management, sales, finance_sector]
-    text: "Опыт РОПа в CONGLOMERATE EMPERIAL (финансовый сектор, брокерская деятельность): обучение топ-менеджмента, масштабирование продаж, управление учебным центром."
+  - id: telegram_bots_interfaces
+    tags: [backend, bots, ui]
+    text: "Разработка асинхронных интерфейсов взаимодействия с AI-системами через Telegram Bot API (aiogram) для загрузки файлов и выдачи аналитических отчетов."
+
+  - id: github_portfolio
+    tags: [portfolio, code, github]
+    text: "Открытое портфолио с production-кодом на GitHub (14Segun88): moge-document-expertise-ai, pd-document-analyzer, news-predictor-ai."
 
   # Факты для автоматических опросников (forms, legal, general)
   - id: full_name
@@ -68,11 +72,7 @@ facts:
 
   - id: relocation_ready
     tags: [forms, availability]
-    text: "К переезду не готов, готов к редким командировкам, приоритет — удаленный формат работы"
-
-  - id: education
-    tags: [forms, education]
-    text: "Высшее образование: КГУФКСТ (Краснодар), 2022 г., специальность: Спортивный менеджмент, Менеджмент организации"
+    text: "К переезду не готов, готов к редким командировкам, предпочтительный формат — удаленная работа"
 
   - id: driver_license
     tags: [forms, general]
@@ -80,39 +80,43 @@ facts:
 
   - id: languages
     tags: [forms, languages]
-    text: "Русский — родной"
+    text: "Русский — родной, английский — чтение технической документации и репозиториев"
 
 # Желаемый вкус коктейля: условия вакансий
 wants:
   target_roles:
-    - "Руководитель отдела продаж"
-    - "РОП"
-    - "Head of Sales"
-    - "Руководитель группы продаж"
-    - "Директор по продажам"
+    - "AI-инженер"
+    - "Разработчик AI-агентов"
+    - "LLM-инженер"
+    - "AI Engineer"
+    - "Prompt Engineer"
+    - "ML-инженер (LLM / RAG / Agents)"
   format:
     - "remote"           # удаленная работа в приоритете
-    - "hybrid"           # гибрид (для Краснодара)
-  salary_net_min: 150000 # чистыми на руки (руб.)
-  salary_net_target: 200000
+    - "hybrid"           # гибридный формат
+  salary_net_min: 200000 # чистыми на руки (руб.)
+  salary_net_target: 250000
   currency: "RUR"
   contracts_allowed:
     - "ТК РФ"
     - "ИП"
     - "Самозанятый"
   stop_words:
-    - "Оператор колл-центра"
-    - "Холодные звонки"
-    - "Продавец-консультант"
-    - "Курьер"
+    - "1C"
+    - "1С"
+    - "Битрикс"
+    - "Bitrix"
+    - "Junior"
+    - "Джуниор"
     - "Стажер"
     - "Стажировка"
-    - "Менеджер без опыта"
-    - "Сетевой маркетинг"
-    - "Оклад 25000"
-    - "Оклад 30000"
-    - "Расклейщик"
-    - "1С программист"
+    - "Холодные звонки"
+    - "Оператор колл-центра"
+    - "PHP"
+    - "WordPress"
+    - "Разметчик данных"
+    - "Асессор"
+    - "Data Entry"
 
 # Конфиденциальные данные: КАТЕГОРИЧЕСКИ запрещено передавать в откликах, формах и чатах
 never_disclose:
@@ -120,4 +124,4 @@ never_disclose:
   - "ИНН и номер СНИЛС"
   - "Точный домашний адрес (разрешено только указывать город: Краснодар)"
   - "Банковские реквизиты, номера карт и счетов"
-  - "Внутренние коммерческие цифры текущего работодателя до подписания NDA"
+  - "Секретные ключи API и конфиденциальные данные заказчиков проектов"
