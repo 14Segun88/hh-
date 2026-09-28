@@ -79,12 +79,26 @@ class LocalQwenClient:
             pass
         return []
 
+    async def _resolve_active_model(self) -> str:
+        """Resolve active LLM model loaded in LM Studio."""
+        available = await self.get_available_models()
+        llms = [m for m in available if "embed" not in m.lower()]
+        if not llms:
+            return self.model
+        # Check if current configured model is among loaded
+        for m in llms:
+            if self.model.lower() in m.lower():
+                return m
+        # Default to first active loaded LLM
+        return llms[0]
+
     async def _chat_completion(
         self, messages: List[Dict[str, str]], temperature: float = 0.2
     ) -> str:
-        """Send chat completion request to LM Studio."""
+        """Send chat completion request to LM Studio with auto-detected model name."""
+        active_model = await self._resolve_active_model()
         payload = {
-            "model": self.model,
+            "model": active_model,
             "messages": messages,
             "temperature": temperature,
             "stream": False,
