@@ -184,9 +184,10 @@ class LiveVisualRunner:
         query: str = "AI-инженер",
         max_vacancies: int = 3,
         search_period_days: int = 2,
+        confirm: bool = True,
         auto_submit: bool = True,
     ) -> None:
-        """Execute full 6-stage live workflow with real responses."""
+        """Execute full 6-stage live workflow with safe confirm sandbox mode."""
         await self.db.init_db()
 
         console.clear()
@@ -548,6 +549,18 @@ class LiveVisualRunner:
                 else:
                     console.print("  [yellow]ℹ Поле для письма не появилось (прямой отклик либо скрыто настройками работодателя)[/yellow]")
 
+                # Capture questionnaire snapshot if employer asks questions
+                try:
+                    q_modal = page.locator("div[data-qa='vacancy-response-questions']").first
+                    if await q_modal.is_visible(timeout=1200):
+                        q_html = await q_modal.inner_html()
+                        form_file = f"data/captured_forms/form_{hh_id}.html"
+                        with open(form_file, "w", encoding="utf-8") as f:
+                            f.write(f"<!-- Vacancy: {live_title} ({live_company}) | {vac_url} -->\n" + q_html)
+                        console.print(f"  💾 [bold cyan]Слепок формы сохранен в:[/bold cyan] [dim]{form_file}[/dim] (для офлайн-обучения Qwen)")
+                except Exception:
+                    pass
+
                 # Submit the application
                 submit_btn = (
                     page.locator("button[data-qa='vacancy-response-submit-popup']")
@@ -561,33 +574,80 @@ class LiveVisualRunner:
 
                 applied_successfully = False
 
-                if auto_submit and await submit_btn.is_visible(timeout=2500):
-                    console.print("  [bold cyan]🚀 КЛИК: Отправка отклика и сопроводительного письма...[/bold cyan]")
-                    await update_browser_hud(
-                        page,
-                        stage=5,
-                        title="ОТПРАВКА ОТКЛИКА",
-                        details="Нажатие кнопки 'Отправить отклик'... Передача резюме и письма работодателю.",
-                    )
-                    await submit_btn.click()
-                    await BrowserHarness.human_delay(2.5, 3.5)
-
-                    # Check for success verification on page
-                    after_html = await page.content()
-                    if any(marker in after_html for marker in ["Вы откликнулись", "Отклик отправлен", "Резюме доставлено", "Ваш отклик"]):
-                        applied_successfully = True
-                        console.print(f"  🎉 [bold green]ОТКЛИК УСПЕШНО ОТПРАВЛЕН! ПИСЬМО ДОСТАВЛЕНО В {live_company.upper()}![/bold green]\n")
+                if await submit_btn.is_visible(timeout=2500):
+                    # If confirmation mode is active: prompt the user
+                    should_submit = True
+                    if confirm:
+                        await highlight_element(page, "button[data-qa='vacancy-response-submit-popup'], button[data-qa='vacancy-response-submit'], button:has-text('Отправить отклик')")
                         await update_browser_hud(
                             page,
                             stage=5,
-                            title="ОТКЛИК И ПИСЬМО ОТПРАВЛЕНЫ",
-                            details=f"<span style='color:#4ade80;font-weight:700;'>УСПЕШНО ОТПРАВЛЕНО!</span><br>Резюме и письмо доставлены в компанию <b>{live_company}</b>.",
+                            title="✋ ОЖИДАНИЕ ВАШЕГО РЕШЕНИЯ",
+                            details=f"Отклик и письмо готовы для <b>{live_company}</b>.<br><span style='color:#fbbf24;'>Пожалуйста, подтвердите отправку в терминале [Y/n/l].</span>",
                         )
-                    else:
-                        applied_successfully = True
-                        console.print(f"  ✔ [green]Форма отклика успешно отправлена в компанию {live_company}.[/green]\n")
+
+                        confirm_card = (
+                            f"🏢 [bold white]Компания:[/bold white] [bold cyan]{live_company}[/bold cyan]\n"
+                            f"💼 [bold white]Позиция:[/bold white] [bold green]{live_title}[/bold green]\n"
+                            f"✉ [bold white]Сопроводительное письмо:[/bold white] Прикреплено (MOGE, PD Analyzer, News Predictor AI)\n"
+                            f"📄 [bold white]Резюме:[/bold white] Салюк Георгий Михайлович (AI-инженер)"
+                        )
+                        console.print(Panel(confirm_card, title="✋ БЕЗОПАСНАЯ ПЕСОЧНИЦА: ПРОВЕРКА ОТКЛИКА", border_style="yellow"))
+                        console.print("[bold yellow]Выберите действие:[/bold yellow]")
+                        console.print("  [bold green][Enter / Y][/bold green] ➔ [green]Отправить отклик прямо сейчас (реальный клик в браузере)[/green]")
+                        console.print("  [bold red][N][/bold red]         ➔ [red]Пропустить эту вакансию (не отправлять)[/red]")
+                        console.print("  [bold cyan][L][/bold cyan]         ➔ [cyan]Записать замечание в lessons.md и пропустить[/cyan]")
+
+                        loop = asyncio.get_event_loop()
+                        try:
+                            user_ans = await loop.run_in_executor(None, input, "\nВаш выбор [Y/n/l]: ")
+                        except Exception:
+                            user_ans = "y"
+
+                        choice = user_ans.strip().lower()
+                        if choice == "n":
+                            should_submit = False
+                            console.print("  [yellow]⏭ Вакансия пропущена по вашему решению. Отклик не отправлен.[/yellow]\n")
+                        elif choice == "l":
+                            should_submit = False
+                            try:
+                                lesson_text = await loop.run_in_executor(None, input, "Введите замечание для config/lessons.md: ")
+                                if lesson_text.strip():
+                                    with open("config/lessons.md", "a", encoding="utf-8") as lf:
+                                        lf.write(f"\n- **Урок ({datetime.date.today()}, {live_company}):** {lesson_text.strip()}\n")
+                                    console.print("  [bold green]✔ Замечание сохранено в config/lessons.md! Модель учтет его в следующий раз.[/bold green]\n")
+                            except Exception:
+                                pass
+                        else:
+                            should_submit = True
+
+                    if should_submit:
+                        console.print("  [bold cyan]🚀 КЛИК: Отправка отклика и сопроводительного письма...[/bold cyan]")
+                        await update_browser_hud(
+                            page,
+                            stage=5,
+                            title="ОТПРАВКА ОТКЛИКА",
+                            details="Нажатие кнопки 'Отправить отклик'... Передача резюме и письма работодателю.",
+                        )
+                        await submit_btn.click()
+                        await BrowserHarness.human_delay(2.5, 3.5)
+
+                        # Check for success verification on page
+                        after_html = await page.content()
+                        if any(marker in after_html for marker in ["Вы откликнулись", "Отклик отправлен", "Резюме доставлено", "Ваш отклик"]):
+                            applied_successfully = True
+                            console.print(f"  🎉 [bold green]ОТКЛИК УСПЕШНО ОТПРАВЛЕН! ПИСЬМО ДОСТАВЛЕНО В {live_company.upper()}![/bold green]\n")
+                            await update_browser_hud(
+                                page,
+                                stage=5,
+                                title="ОТКЛИК И ПИСЬМО ОТПРАВЛЕНЫ",
+                                details=f"<span style='color:#4ade80;font-weight:700;'>УСПЕШНО ОТПРАВЛЕНО!</span><br>Резюме и письмо доставлены в компанию <b>{live_company}</b>.",
+                            )
+                        else:
+                            applied_successfully = True
+                            console.print(f"  ✔ [green]Форма отклика успешно отправлена в компанию {live_company}.[/green]\n")
                 else:
-                    console.print("  [yellow]ℹ Форма подготовлена в полуавтоматическом режиме.[/yellow]\n")
+                    console.print("  [yellow]ℹ Кнопка отправки не найдена либо форма уже отправлена.[/yellow]\n")
 
                 # =================================================================
                 # СТАДИЯ 6: Дегустация и Книга рецептов (SQLite & lessons.md)

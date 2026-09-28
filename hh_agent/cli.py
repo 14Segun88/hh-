@@ -66,14 +66,15 @@ def test_llm():
 @cli.command("live")
 @click.option("--query", type=str, default="AI-инженер", help="Поисковый запрос на hh.ru")
 @click.option("--limit", type=int, default=3, help="Сколько вакансий обработать в сессии")
-def live(query, limit):
+@click.option("--confirm/--auto-submit", default=True, help="Безопасная песочница: подтверждать клик отправки [Y/n/l]")
+def live(query, limit, confirm):
     """
     Запустить в реале с открытием вкладки браузера на экране (Headful).
     Логи терминала синхронизированы со стадиями и HUD в браузере.
     """
     from hh_agent.core.live_runner import LiveVisualRunner
     runner = LiveVisualRunner()
-    asyncio.run(runner.run(query=query, max_vacancies=limit))
+    asyncio.run(runner.run(query=query, max_vacancies=limit, confirm=confirm))
 
 
 @cli.command()
@@ -81,12 +82,13 @@ def live(query, limit):
 @click.option("--max-vacancies", type=int, default=None, help="Лимит вакансий за сессию")
 @click.option("--live/--silent", default=False, help="Показывать окно браузера и HUD в живую")
 @click.option("--query", type=str, default="AI-инженер", help="Поисковый запрос")
-def run(mode, max_vacancies, live, query):
+@click.option("--confirm/--auto-submit", default=True, help="Безопасная песочница: подтверждать отправку")
+def run(mode, max_vacancies, live, query, confirm):
     """Запустить сессию анализа (вчера + сегодня) и отправки сводки."""
     if live:
         from hh_agent.core.live_runner import LiveVisualRunner
         runner = LiveVisualRunner()
-        asyncio.run(runner.run(query=query, max_vacancies=max_vacancies or 3))
+        asyncio.run(runner.run(query=query, max_vacancies=max_vacancies or 3, confirm=confirm))
         return
 
     if mode:
