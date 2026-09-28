@@ -19,6 +19,14 @@ def cli():
 
 
 @cli.command()
+def demo():
+    """Интерактивная демонстрация работы всех 6 стадий Harness-агента (кухня и блендер)."""
+    from hh_agent.core.demo import HarnessDemoRunner
+    runner = HarnessDemoRunner()
+    asyncio.run(runner.run_interactive_demo())
+
+
+@cli.command()
 def login():
     """
     Открыть браузер для ручной авторизации на hh.ru.
