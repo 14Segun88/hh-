@@ -1,0 +1,68 @@
+# ==============================================================================
+# ПРОФИЛЬ КАНДИДАТА (CANDIDATE PROFILE)
+# Используется локальной Qwen и облачной NIM для точного скоринга,
+# генерации персонализированных сопроводительных писем и заполнения анкет.
+# ==============================================================================
+
+personal_info:
+  full_name: "Иван Иванов"
+  contact_phone: "+7 999 000-00-00"
+  contact_telegram: "@my_telegram_handle"
+  email: "candidate@example.com"
+  city: "Москва"
+  citizenship: "РФ"
+  relocation_ready: false
+  work_permit: ["РФ"]
+
+career:
+  target_roles:
+    - "Senior Python Developer"
+    - "Backend Tech Lead"
+    - "Python / Go Software Engineer"
+  target_salary_net_rub: 300000
+  minimum_salary_net_rub: 250000
+  preferred_currency: "RUR"
+  employment_type:
+    - "Полная занятость"
+  work_format:
+    - "Удаленная работа"
+    - "Гибрид (Москва)"
+  legal_entities_allowed:
+    - "ТК РФ"
+    - "ИП"
+    - "Самозанятый"
+
+skills:
+  primary_stack:
+    - "Python 3.10+"
+    - "Asyncio"
+    - "FastAPI"
+    - "PostgreSQL"
+    - "Redis"
+    - "Docker"
+    - "Kubernetes"
+    - "Kafka"
+    - "Git"
+  secondary_stack:
+    - "Go (Golang)"
+    - "ClickHouse"
+    - "ElasticSearch"
+    - "gRPC"
+    - "CI/CD (GitLab, GitHub Actions)"
+    - "Playwright / Selenium"
+  years_of_experience: 6
+
+experience_summary: >
+  Опыт в бэкенд-разработке более 6 лет. Проектирование микросервисной архитектуры
+  на Python (FastAPI, Asyncio) и Go. Высоконагруженные системы, обработка очередей
+  в Kafka, оптимизация сложных SQL-запросов в PostgreSQL и ClickHouse. Опыт внедрения
+  CI/CD, контейнеризации в k8s, написание модульных и e2e тестов.
+
+# Факты для автоматического заполнения стандартных опросников работодателей (Qwen Tier 1):
+questionnaire_facts:
+  english_level: "B2 (Upper-Intermediate) — свободное чтение документации, прохождение интервью"
+  military_service: "Не подлежит / вопрос решен"
+  driver_license: "Категория B"
+  notice_period_weeks: 2
+  highest_education: "Высшее техническое"
+  has_own_equipment: true

@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# Environment and secrets
+.env
+*.env.local
+
+# Browser data and sessions
+data/
+browser_profile/
+*.session
+*.cookies.json
+
+# SQLite database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
