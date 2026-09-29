@@ -104,6 +104,11 @@ class TelegramCrmBot:
         funnel_discard = metrics.get("funnel_discard", 0)
         funnel_archive = metrics.get("funnel_archive", 0)
 
+        tg_total = metrics.get("tg_total_found", 0)
+        tg_today = metrics.get("tg_today_found", 0)
+        tg_contacted = metrics.get("tg_today_contacted", 0)
+        tg_replied = metrics.get("tg_replied", 0)
+
         # Generate or fallback Qwen review if not provided
         if not qwen_review:
             if self.local_client:
@@ -124,13 +129,13 @@ class TelegramCrmBot:
             if not qwen_review:
                 qwen_review = (
                     f"  • <b>Синхронизация hh.ru ↔ CRM:</b> 100% совпадение (Все: {funnel_all}, диалоги: {active_chats}).\n"
-                    f"  • <b>Целостность данных:</b> Расхождений между сайтом и карточкой Telegram нет.\n"
+                    f"  • <b>Telegram-каналы:</b> Найдено {tg_today} свежих вакансий за сегодня.\n"
                     f"  • <b>Статус воронки:</b> В ожидании: {funnel_waiting}, собеседований: {funnel_interview}.\n"
                     f"  • <b>Вердикт Qwen:</b> Карточка актуальна, агент готов к следующему циклу."
                 )
 
         text = (
-            f"🏢 <b>CRM СИСТЕМА НАЙМА | БИТРИКС24 (HH.RU)</b>\n"
+            f"🏢 <b>CRM СИСТЕМА НАЙМА | БИТРИКС24 (HH.RU + TG)</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>Кандидат:</b> Салюк Георгий Михайлович (27 лет)\n"
             f"💼 <b>Целевая роль:</b> AI-инженер / LLM-разработчик\n"
@@ -149,6 +154,10 @@ class TelegramCrmBot:
             f"  ├ ⚡ <i>Простой отклик:</i> <b>{direct}</b>\n"
             f"  ├ 📝 <i>Отклик с анкетой / вопросами:</i> <b>{quest}</b>\n"
             f"  └ 🧪 <i>Отклик с тестовым / формой:</i> <b>{test_task}</b>\n\n"
+            f"✈️ <b>TELEGRAM КАНАЛЫ (Careerspace, DS Jobs, GetIT):</b>\n"
+            f"  🔍 <i>Найдено вакансий за сегодня:</i> <b>{tg_today}</b> (всего: {tg_total})\n"
+            f"  ⚡ <i>Отправлено питчей / откликов:</i> <b>{tg_contacted}</b>\n"
+            f"  💬 <i>Ответов от рекрутеров:</i> <b>{tg_replied}</b>\n\n"
             f"🤖 <b>РЕВЬЮ QWEN (АУДИТ СИНХРОНИЗАЦИИ):</b>\n"
             f"{qwen_review}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -163,10 +172,13 @@ class TelegramCrmBot:
             "inline_keyboard": [
                 [
                     {"text": "📊 Обновить CRM", "callback_data": "refresh_crm"},
-                    {"text": "💼 Воронка сделок", "callback_data": "deals_pipeline"},
+                    {"text": "💼 Воронка hh.ru", "callback_data": "deals_pipeline"},
                 ],
                 [
+                    {"text": "✈️ Вакансии Telegram", "callback_data": "tg_vacancies"},
                     {"text": "💬 Чаты с HR", "callback_data": "chats_list"},
+                ],
+                [
                     {"text": "ℹ️ О кандидате (PRD)", "callback_data": "candidate_prd"},
                 ],
             ]
@@ -373,6 +385,113 @@ class TelegramCrmBot:
                 f"• <b>Контакты:</b> Telegram @Segun14 | +7 (918) 045-25-04"
             )
             await self.send_message(text=text, chat_id=chat_id)
+        elif data == "tg_vacancies":
+            tg_vacs = await self.db.get_tg_vacancies(min_score=50, limit=5)
+            if not tg_vacs:
+                await self.send_message(
+                    text="✈️ <b>TELEGRAM ВАКАНСИИ:</b>\nПока нет сохраненных вакансий. Отправьте /tg для сканирования каналов!",
+                    chat_id=chat_id,
+                )
+            else:
+                summary_text = await self.get_tg_vacancies_text()
+                await self.send_message(text=summary_text, chat_id=chat_id)
+                # Send interactive cards for top 3
+                for vac in tg_vacs[:3]:
+                    await self.send_tg_vacancy_card(vac, chat_id=chat_id)
+                    await asyncio.sleep(0.3)
+        elif data.startswith("tg_applied:"):
+            post_id = data.replace("tg_applied:", "")
+            await self.db.update_tg_vacancy_status(post_id, "APPLIED", applied=True)
+            await self.send_message(
+                text=f"✔ <b>Отклик по вакансии {post_id} зафиксирован в CRM!</b>",
+                chat_id=chat_id,
+            )
+            await self.send_dashboard(chat_id=chat_id)
+        elif data.startswith("tg_skip:"):
+            post_id = data.replace("tg_skip:", "")
+            await self.db.update_tg_vacancy_status(post_id, "SKIPPED")
+            await self.send_message(text=f"Вакансия {post_id} помечена как пропущенная.", chat_id=chat_id)
+
+    async def get_tg_vacancies_text(self) -> str:
+        """Format top Telegram vacancies summary."""
+        vacs = await self.db.get_tg_vacancies(min_score=50, limit=7)
+        if not vacs:
+            return "✈️ <b>TELEGRAM ВАКАНСИИ:</b>\nНет сохраненных вакансий за сегодня."
+
+        lines = [
+            "✈️ <b>АКТУАЛЬНЫЕ ВАКАНСИИ ИЗ TELEGRAM КАНАЛОВ:</b>",
+            "━━━━━━━━━━━━━━━━━━━━━━━━",
+        ]
+        for idx, v in enumerate(vacs, 1):
+            ch = v.get("channel_name", "")
+            title = v.get("title", "")
+            comp = v.get("company_name", "")
+            score = v.get("score", 70)
+            ct = v.get("contact_type", "")
+            tgt = v.get("contact_target", "")
+            status = v.get("status", "NEW")
+            st_icon = "✔ Отправлен" if status == "APPLIED" else "⚡ Ждет отклика"
+
+            lines.append(
+                f"{idx}. <b>@{ch}</b>: {title}\n"
+                f"   🏢 {comp} | ⭐ {score}% | {st_icon}\n"
+                f"   🎯 Контакт: <code>{tgt}</code> ({ct})\n"
+                f"   🔗 <a href='{v.get('post_url', '')}'>Пост в канале</a>"
+            )
+        return "\n".join(lines)
+
+    async def send_tg_vacancy_card(self, vac: Dict[str, Any], chat_id: Optional[str] = None) -> bool:
+        """Send an interactive Telegram vacancy card with 1-click CTA buttons."""
+        title = vac.get("title", "AI-инженер")
+        comp = vac.get("company_name", "IT Компания")
+        channel = vac.get("channel_name", "telegram")
+        score = vac.get("score", 70)
+        stack_val = vac.get("extracted_stack", [])
+        if isinstance(stack_val, str):
+            try:
+                stack_val = json.loads(stack_val)
+            except Exception:
+                stack_val = []
+        stack = ", ".join(stack_val) if stack_val else "AI, LLM, Python"
+        post_url = vac.get("post_url", "")
+        contact_type = vac.get("contact_type", "UNKNOWN")
+        contact_target = vac.get("contact_target", "")
+        pitch = vac.get("drafted_pitch", "")
+        post_id = vac.get("post_id", "")
+
+        text = (
+            f"🔥 <b>ВАКАНСИЯ ИЗ TELEGRAM | @{channel}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>Позиция:</b> {title}\n"
+            f"🏢 <b>Компания:</b> {comp}\n"
+            f"⭐ <b>Соответствие стеку:</b> <b>{score}%</b> ({stack})\n"
+            f"🎯 <b>Тип контакта:</b> <b>{contact_type}</b> (<code>{contact_target}</code>)\n\n"
+            f"📝 <b>ГОТОВЫЙ ПИТЧ ОТ ГЕОРГИЯ (нажмите чтобы скопировать):</b>\n"
+            f"<code>{pitch}</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"<i>Перейдите по кнопке ниже к диалогу и нажмите «Отклик отправлен» для фиксации в CRM:</i>"
+        )
+
+        buttons = []
+        first_row = []
+        if contact_type == "DM_TELEGRAM" and contact_target:
+            clean_tgt = contact_target.lstrip("@").replace("https://t.me/", "")
+            first_row.append({"text": f"💬 Написать @{clean_tgt}", "url": f"https://t.me/{clean_tgt}"})
+        elif contact_type == "EXTERNAL_URL" and contact_target:
+            first_row.append({"text": "🌐 Открыть сайт / форму", "url": contact_target})
+
+        if post_url:
+            first_row.append({"text": "📌 Пост в канале", "url": post_url})
+        if first_row:
+            buttons.append(first_row)
+
+        buttons.append([
+            {"text": "✅ Отклик отправлен", "callback_data": f"tg_applied:{post_id}"},
+            {"text": "❌ Пропустить", "callback_data": f"tg_skip:{post_id}"},
+        ])
+
+        keyboard = {"inline_keyboard": buttons}
+        return await self.send_message(text=text, chat_id=chat_id, reply_markup=keyboard)
 
     async def poll_updates_loop(self) -> None:
         """Continuous polling loop for Telegram updates."""
@@ -425,6 +544,27 @@ class TelegramCrmBot:
                             elif text in ("/chats", "чаты", "переписки"):
                                 chats_text = await self.get_active_chats_text()
                                 await self.send_message(text=chats_text, chat_id=sender_chat_id)
+                            elif text in ("/tg", "tg", "тг", "вакансии тг"):
+                                await self.send_message(
+                                    text="🔍 <b>Запущен экспресс-поиск вакансий в Telegram-каналах...</b>",
+                                    chat_id=sender_chat_id,
+                                )
+                                from hh_agent.core.telegram.hunter import TelegramVacancyHunter
+                                hunter = TelegramVacancyHunter(db=self.db)
+                                new_vacs = await hunter.scan_all_channels(days_back=1)
+                                if new_vacs:
+                                    await self.send_message(
+                                        text=f"🎯 <b>Найдено {len(new_vacs)} свежих подходящих вакансий в Telegram!</b>",
+                                        chat_id=sender_chat_id,
+                                    )
+                                    for v in new_vacs[:4]:
+                                        await self.send_tg_vacancy_card(v, chat_id=sender_chat_id)
+                                        await asyncio.sleep(0.3)
+                                else:
+                                    await self.send_message(
+                                        text="ℹ️ <i>Свежих подходящих вакансий за сегодня в каналах пока нет.</i>",
+                                        chat_id=sender_chat_id,
+                                    )
                             elif text in ("/prd", "/profile", "профиль"):
                                 await self.send_message(
                                     text="👤 Салюк Георгий | AI-инженер | 220 000 ₽ net | Краснодар (удаленно)\nПроекты: MOGE, PD Document Analyzer, News Predictor.",

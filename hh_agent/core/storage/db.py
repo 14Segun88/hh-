@@ -120,6 +120,40 @@ class Database:
                 );
                 """
             )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS tg_vacancies (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    post_id TEXT UNIQUE NOT NULL,
+                    channel_name TEXT NOT NULL,
+                    post_url TEXT NOT NULL,
+                    published_at TEXT,
+                    title TEXT,
+                    company_name TEXT,
+                    raw_text TEXT NOT NULL,
+                    contact_type TEXT,
+                    contact_target TEXT,
+                    all_links TEXT,
+                    all_mentions TEXT,
+                    score INTEGER DEFAULT 0,
+                    extracted_stack TEXT,
+                    drafted_pitch TEXT,
+                    status TEXT DEFAULT 'NEW',
+                    applied_at TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tg_vacancies_post_id ON tg_vacancies(post_id);"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tg_vacancies_channel ON tg_vacancies(channel_name);"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tg_vacancies_status ON tg_vacancies(status);"
+            )
             await db.commit()
 
     async def vacancy_exists(self, hh_id: str) -> bool:
@@ -515,6 +549,9 @@ class Database:
             # 8. HH.RU Funnel tabs metrics
             funnel = await self.get_funnel_metrics()
 
+            # 9. Telegram Channel Outreach metrics
+            tg_metrics = await self.get_tg_crm_metrics()
+
             return {
                 "days_active": days_active,
                 "today_applied_total": today_applied_total,
@@ -531,6 +568,7 @@ class Database:
                 "funnel_waiting": funnel.get("waiting_count", 0),
                 "funnel_discard": funnel.get("discard_count", 0),
                 "funnel_archive": funnel.get("archive_count", 0),
+                **tg_metrics,
             }
 
     async def save_funnel_metrics(self, metrics: Dict[str, int]) -> None:
@@ -646,4 +684,136 @@ class Database:
                 (json.dumps(snapshot, ensure_ascii=False),),
             )
             await db.commit()
+
+    async def tg_vacancy_exists(self, post_id: str) -> bool:
+        """Check if Telegram vacancy post was already saved."""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT 1 FROM tg_vacancies WHERE post_id = ? LIMIT 1",
+                (post_id,),
+            )
+            row = await cursor.fetchone()
+            return row is not None
+
+    async def save_tg_vacancy(self, tg_vac: Dict[str, Any]) -> int:
+        """Insert or update Telegram vacancy record."""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                INSERT INTO tg_vacancies (
+                    post_id, channel_name, post_url, published_at,
+                    title, company_name, raw_text, contact_type,
+                    contact_target, all_links, all_mentions, score,
+                    extracted_stack, drafted_pitch, status, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(post_id) DO UPDATE SET
+                    score = excluded.score,
+                    drafted_pitch = excluded.drafted_pitch,
+                    status = excluded.status,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    tg_vac.get("post_id"),
+                    tg_vac.get("channel_name"),
+                    tg_vac.get("post_url"),
+                    tg_vac.get("published_at"),
+                    tg_vac.get("title"),
+                    tg_vac.get("company_name"),
+                    tg_vac.get("raw_text", ""),
+                    tg_vac.get("contact_type", "UNKNOWN"),
+                    tg_vac.get("contact_target", ""),
+                    json.dumps(tg_vac.get("all_links", []), ensure_ascii=False),
+                    json.dumps(tg_vac.get("all_mentions", []), ensure_ascii=False),
+                    tg_vac.get("score", 0),
+                    json.dumps(tg_vac.get("extracted_stack", []), ensure_ascii=False),
+                    tg_vac.get("drafted_pitch", ""),
+                    tg_vac.get("status", "PITCH_READY"),
+                ),
+            )
+            await db.commit()
+            return cursor.lastrowid or 0
+
+    async def update_tg_vacancy_status(
+        self,
+        post_id: str,
+        status: str,
+        applied: bool = False,
+    ) -> None:
+        """Update workflow status of a Telegram vacancy (e.g. APPLIED, REPLIED)."""
+        applied_at = datetime.datetime.now().isoformat() if applied else None
+        async with aiosqlite.connect(self.db_path) as db:
+            if applied_at:
+                await db.execute(
+                    """
+                    UPDATE tg_vacancies
+                    SET status = ?, applied_at = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE post_id = ?
+                    """,
+                    (status, applied_at, post_id),
+                )
+            else:
+                await db.execute(
+                    """
+                    UPDATE tg_vacancies
+                    SET status = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE post_id = ?
+                    """,
+                    (status, post_id),
+                )
+            await db.commit()
+
+    async def get_tg_vacancies(
+        self,
+        min_score: int = 50,
+        status: Optional[str] = None,
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        """Retrieve top Telegram vacancies sorted by score."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            query = "SELECT * FROM tg_vacancies WHERE score >= ?"
+            params: List[Any] = [min_score]
+            if status:
+                query += " AND status = ?"
+                params.append(status)
+            query += " ORDER BY id DESC LIMIT ?"
+            params.append(limit)
+
+            cursor = await db.execute(query, tuple(params))
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_tg_crm_metrics(self) -> Dict[str, Any]:
+        """Aggregate Telegram vacancy metrics for CRM dashboard."""
+        today_iso = datetime.date.today().isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("SELECT COUNT(*) FROM tg_vacancies")
+            (total_found,) = await cursor.fetchone() or (0,)
+
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM tg_vacancies WHERE published_at LIKE ?",
+                (f"{today_iso}%",),
+            )
+            (today_found,) = await cursor.fetchone() or (0,)
+
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM tg_vacancies WHERE status = 'APPLIED' AND applied_at LIKE ?",
+                (f"{today_iso}%",),
+            )
+            (today_contacted,) = await cursor.fetchone() or (0,)
+
+            cursor = await db.execute("SELECT COUNT(*) FROM tg_vacancies WHERE status = 'REPLIED'")
+            (replied_count,) = await cursor.fetchone() or (0,)
+
+            cursor = await db.execute("SELECT COUNT(*) FROM tg_vacancies WHERE status = 'INTERVIEW'")
+            (interview_count,) = await cursor.fetchone() or (0,)
+
+            return {
+                "tg_total_found": total_found,
+                "tg_today_found": today_found,
+                "tg_today_contacted": today_contacted,
+                "tg_replied": replied_count,
+                "tg_interview": interview_count,
+            }
+
 

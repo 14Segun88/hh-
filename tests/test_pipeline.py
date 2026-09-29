@@ -791,3 +791,141 @@ async def test_async_timed_input_confirm_timeout():
         assert should_send is True
 
 
+@pytest.mark.asyncio
+async def test_telegram_vacancy_hunter():
+    from hh_agent.core.telegram.hunter import TelegramVacancyHunter
+
+    hunter = TelegramVacancyHunter()
+
+    # 1. Matching AI post with recruiter @mention
+    post_ai = {
+        "post_id": "datasciencejobs/101",
+        "channel_name": "datasciencejobs",
+        "post_url": "https://t.me/datasciencejobs/101",
+        "published_at": "2026-09-29T12:00:00+00:00",
+        "raw_text": (
+            "Senior AI-инженер / LLM разработчик\n"
+            "Компания: NeuroTech AI\n"
+            "Стек: Python, FastAPI, Llama, Qwen, Weaviate RAG, Multi-agent\n"
+            "Зарплата: от 250 000 руб. Удаленно.\n"
+            "Контакты для отклика: @tech_recruiter_olga"
+        ),
+        "links": [],
+        "mentions": ["@tech_recruiter_olga"],
+    }
+    res_ai = hunter.analyze_and_classify_post(post_ai)
+    assert res_ai is not None
+    assert res_ai["contact_type"] == "DM_TELEGRAM"
+    assert res_ai["contact_target"] == "@tech_recruiter_olga"
+    assert res_ai["score"] >= 70
+    assert "Python" in res_ai["extracted_stack"]
+    assert "LLM / GenAI" in res_ai["extracted_stack"]
+    assert "github.com/14Segun88" in res_ai["drafted_pitch"]
+    assert "Георгий Салюк" in res_ai["drafted_pitch"]
+
+    # 2. Matching post with external link
+    post_link = {
+        "post_id": "careerspace/202",
+        "channel_name": "careerspace",
+        "post_url": "https://t.me/careerspace/202",
+        "published_at": "2026-09-29T13:00:00+00:00",
+        "raw_text": (
+            "LLM Инженер / Разработчик ИИ\n"
+            "Требуется опыт с PyTorch, RAG, агентами и FastAPI.\n"
+            "Откликнуться через форму на сайте: https://careerspace.app/job/12345"
+        ),
+        "links": ["https://careerspace.app/job/12345"],
+        "mentions": [],
+    }
+    res_link = hunter.analyze_and_classify_post(post_link)
+    assert res_link is not None
+    assert res_link["contact_type"] == "EXTERNAL_URL"
+    assert "careerspace.app" in res_link["contact_target"]
+
+    # 3. Junior post -> should be filtered out
+    post_junior = {
+        "post_id": "Getitrussia/303",
+        "channel_name": "Getitrussia",
+        "post_url": "https://t.me/Getitrussia/303",
+        "published_at": "2026-09-29T14:00:00+00:00",
+        "raw_text": (
+            "Junior Стажер Python разработчик\n"
+            "Обучение с нуля, стек: Python, SQL. Контакт: @hr_intern"
+        ),
+        "links": [],
+        "mentions": ["@hr_intern"],
+    }
+    res_junior = hunter.analyze_and_classify_post(post_junior)
+    assert res_junior is None
+
+    # 4. Irrelevant PHP/1C post -> should be filtered out
+    post_php = {
+        "post_id": "it_hr_vacancy/404",
+        "channel_name": "it_hr_vacancy",
+        "post_url": "https://t.me/it_hr_vacancy/404",
+        "published_at": "2026-09-29T15:00:00+00:00",
+        "raw_text": (
+            "Разработчик 1C / PHP Битрикс\n"
+            "Поддержка сайтов на PHP. Контакт: @php_boss"
+        ),
+        "links": [],
+        "mentions": ["@php_boss"],
+    }
+    res_php = hunter.analyze_and_classify_post(post_php)
+    assert res_php is None
+
+
+@pytest.mark.asyncio
+async def test_database_tg_vacancies(tmp_path: Path):
+    from hh_agent.core.storage.db import Database
+
+    db_path = tmp_path / "test_tg.sqlite3"
+    db = Database(db_path=db_path)
+    await db.init_db()
+
+    # 1. Save Telegram vacancy
+    vac_data = {
+        "post_id": "test_ch/1001",
+        "channel_name": "test_ch",
+        "post_url": "https://t.me/test_ch/1001",
+        "published_at": "2026-09-29T10:00:00",
+        "title": "Lead AI Engineer",
+        "company_name": "AI Corp",
+        "raw_text": "Full job description...",
+        "contact_type": "DM_TELEGRAM",
+        "contact_target": "@recruiter_ai",
+        "all_links": ["https://site.com"],
+        "all_mentions": ["@recruiter_ai"],
+        "score": 92,
+        "extracted_stack": ["Python", "LLM", "RAG"],
+        "drafted_pitch": "Здравствуйте! Я AI-инженер...",
+        "status": "PITCH_READY",
+    }
+    row_id = await db.save_tg_vacancy(vac_data)
+    assert row_id > 0
+
+    # 2. Check exists
+    exists = await db.tg_vacancy_exists("test_ch/1001")
+    assert exists is True
+    not_exists = await db.tg_vacancy_exists("test_ch/9999")
+    assert not_exists is False
+
+    # 3. Retrieve
+    vacs = await db.get_tg_vacancies(min_score=80)
+    assert len(vacs) == 1
+    assert vacs[0]["title"] == "Lead AI Engineer"
+    assert vacs[0]["contact_target"] == "@recruiter_ai"
+
+    # 4. Update status to APPLIED
+    await db.update_tg_vacancy_status("test_ch/1001", "APPLIED", applied=True)
+    vacs_after = await db.get_tg_vacancies(min_score=80)
+    assert vacs_after[0]["status"] == "APPLIED"
+    assert vacs_after[0]["applied_at"] is not None
+
+    # 5. Check Telegram CRM metrics
+    metrics = await db.get_tg_crm_metrics()
+    assert metrics["tg_total_found"] == 1
+    assert metrics["tg_today_contacted"] == 1
+
+
+

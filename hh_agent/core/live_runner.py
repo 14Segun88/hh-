@@ -2118,6 +2118,24 @@ class LiveVisualRunner:
                         console.print(summary_table)
 
                 # -------------------------------------------------------------
+                # Step 3.5: Telegram Channels Job Hunting (Careerspace, DS Jobs, GetIT)
+                # -------------------------------------------------------------
+                console.print("\n[bold cyan]═══════════════════════════════════════════════════════════════[/bold cyan]")
+                console.print("[bold cyan]✈️ ЭТАП 3.5: МОНИТОРИНГ TELEGRAM-КАНАЛОВ НА СВЕЖИЕ ВАКАНСИИ[/bold cyan]")
+                console.print("[dim]Сканирование @careerspace, @datasciencejobs, @Getitrussia, @it_hr_vacancy...[/dim]\n")
+                try:
+                    from hh_agent.core.telegram.hunter import TelegramVacancyHunter
+                    tg_hunter = TelegramVacancyHunter(db=self.db, profile=self.profile, rules=self.rules)
+                    tg_vacs = await tg_hunter.scan_all_channels(days_back=1)
+                    if tg_vacs and self.crm_bot.bot_token and self.crm_bot.chat_id:
+                        console.print(f"  📲 [cyan]Отправка {min(3, len(tg_vacs))} топ-карточек в Telegram CRM...[/cyan]")
+                        for tv in tg_vacs[:3]:
+                            await self.crm_bot.send_tg_vacancy_card(tv)
+                            await asyncio.sleep(0.3)
+                except Exception as e:
+                    console.print(f"  [yellow]⚠ Предупреждение мониторинга TG-каналов:[/yellow] {e}")
+
+                # -------------------------------------------------------------
                 # Step 4: Final Funnel Sync & Telegram Update before end of cycle
                 # -------------------------------------------------------------
                 console.print("\n[bold yellow]═══════════════════════════════════════════════════════════════[/bold yellow]")

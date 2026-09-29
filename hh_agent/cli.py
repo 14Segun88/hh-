@@ -198,15 +198,40 @@ def crm():
 
     async def _show():
         txt = await crm_bot.get_crm_dashboard_text()
-        console.print(Panel(txt, title="🏢 CRM Битрикс24 (HH.RU)", border_style="cyan"))
+        console.print(Panel(txt, title="🏢 CRM Битрикс24 (HH.RU + TG)", border_style="cyan"))
         sent = await crm_bot.send_dashboard()
         if sent:
             console.print("[bold green]✔ Дашборд успешно отправлен в Telegram![/bold green]")
         else:
-            console.print("[dim yellow]ℹ Сообщение выведено в консоль (напишите /start боту @Butrix_bot для связки).[/dim yellow]")
+            console.print("[dim yellow]ℹ Сообщение выведено в консоль (напишите /start боту для связки).[/dim yellow]")
 
     asyncio.run(_show())
 
 
+@cli.command("tg")
+@click.option("--days", type=int, default=1, help="За сколько дней сканировать посты (по умолчанию 1)")
+@click.option("--notify/--no-notify", default=True, help="Отправлять найденные карточки в Telegram CRM бот")
+def tg(days, notify):
+    """Сканировать Telegram-каналы (careerspace, datasciencejobs, GetIT, it_hr_vacancy) на AI/LLM вакансии."""
+    from hh_agent.core.telegram.hunter import TelegramVacancyHunter
+    from hh_agent.core.telegram.crm_bot import TelegramCrmBot
+
+    hunter = TelegramVacancyHunter()
+    crm_bot = TelegramCrmBot()
+
+    async def _run_tg():
+        vacancies = await hunter.scan_all_channels(days_back=days)
+        if vacancies and notify and crm_bot.bot_token and crm_bot.chat_id:
+            console.print("  📲 [cyan]Отправка карточек с питчами в Telegram CRM...[/cyan]")
+            for vac in vacancies[:5]:
+                await crm_bot.send_tg_vacancy_card(vac)
+                await asyncio.sleep(0.4)
+            await crm_bot.notify_if_crm_updated(force=True)
+            console.print("  ✔ [bold green]Карточки успешно доставлены в Telegram![/bold green]")
+
+    asyncio.run(_run_tg())
+
+
 if __name__ == "__main__":
     cli()
+
