@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import click
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 from hh_agent.config import settings
 from hh_agent.core.browser.harness import BrowserHarness
@@ -44,8 +45,8 @@ def login():
 
         # Keep alive until user completes login
         try:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, input, "\nНажмите ENTER в этой консоли, когда завершите вход в аккаунт hh.ru...\n")
+            from hh_agent.core.live_runner import async_timed_input
+            await async_timed_input("\nНажмите ENTER в этой консоли, когда завершите вход в аккаунт hh.ru (таймаут 180с)...\n", timeout=180.0, default="")
         finally:
             await harness.close()
             console.print("[bold green]✔ Сессия успешно сохранена в persistent profile![/bold green]")
@@ -64,17 +65,33 @@ def test_llm():
 
 
 @cli.command("live")
-@click.option("--query", type=str, default="AI-инженер", help="Поисковый запрос на hh.ru")
-@click.option("--limit", type=int, default=3, help="Сколько вакансий обработать в сессии")
-@click.option("--confirm/--auto-submit", default=True, help="Безопасная песочница: подтверждать клик отправки [Y/n/l]")
-def live(query, limit, confirm):
+@click.option("--query", type=str, default="AI-инженер", help="Основной поисковый запрос на hh.ru (баланс 50/50: AI-инженер + LLM)")
+@click.option("--pool-size", type=int, default=35, help="Сколько свежих вакансий собрать в пул (по умолчанию 35)")
+@click.option("--limit", type=int, default=3, help="Сколько вакансий обработать и откликнуться (по умолчанию 3)")
+@click.option("--days", type=int, default=7, help="За какой период искать вакансии (в днях, по умолчанию 7)")
+@click.option("--confirm/--auto-submit", default=False, help="Подтверждать отклики и ответы [Y/n] или слать автоматически")
+@click.option("--loop/--once", default=False, help="Работать в непрерывном цикле (мониторинг чатов -> отклики -> пауза -> повтор)")
+@click.option("--interval", type=int, default=30, help="Интервал между итерациями цикла в минутах (по умолчанию 30)")
+def live(query, pool_size, limit, days, confirm, loop, interval):
     """
-    Запустить в реале с открытием вкладки браузера на экране (Headful).
-    Логи терминала синхронизированы со стадиями и HUD в браузере.
+    Запустить боевой цикл в видимом браузере (Headful Chromium):
+    1. Мониторинг откликов и переписка с работодателями в цикле вопрос-ответ.
+    2. Поиск свежих вакансий (с исключением всех известных из БД).
+    3. Подача откликов с целевым резюме AI-инженера и авторскими письмами.
     """
     from hh_agent.core.live_runner import LiveVisualRunner
     runner = LiveVisualRunner()
-    asyncio.run(runner.run(query=query, max_vacancies=limit, confirm=confirm))
+    asyncio.run(
+        runner.run(
+            target_pool_size=pool_size,
+            apply_limit=limit,
+            search_period_days=days,
+            confirm=confirm,
+            initial_query=query,
+            loop=loop,
+            interval_minutes=interval,
+        )
+    )
 
 
 @cli.command()
@@ -153,9 +170,42 @@ def digest():
             top_vacancies=top_vacs,
             incoming_chats=chats,
         )
-        console.print("[green]✔ Дайджест отправлен![/green]")
+@cli.command("bot")
+def bot():
+    """Запустить Telegram CRM-бота (Битрикс24) для интерактивного управления и дашборда."""
+    from hh_agent.core.telegram.crm_bot import TelegramCrmBot
+    crm_bot = TelegramCrmBot()
+    token_status = "настроен (.env)" if crm_bot.bot_token else "не задан (.env)"
+    console.print(
+        Panel.fit(
+            "[bold cyan]🏢 ЗАПУСК TELEGRAM CRM-БОТА (БИТРИКС24)[/bold cyan]\n"
+            f"[dim]Токен: {token_status}[/dim]\n"
+            "[green]Откройте Telegram и напишите /start боту для авторизации.[/green]",
+            border_style="cyan",
+        )
+    )
+    try:
+        asyncio.run(crm_bot.poll_updates_loop())
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Бот остановлен пользователем.[/yellow]")
 
-    asyncio.run(_digest())
+
+@cli.command("crm")
+def crm():
+    """Показать текущий Bitrix24 / CRM дашборд в консоли и отправить в Telegram."""
+    from hh_agent.core.telegram.crm_bot import TelegramCrmBot
+    crm_bot = TelegramCrmBot()
+
+    async def _show():
+        txt = await crm_bot.get_crm_dashboard_text()
+        console.print(Panel(txt, title="🏢 CRM Битрикс24 (HH.RU)", border_style="cyan"))
+        sent = await crm_bot.send_dashboard()
+        if sent:
+            console.print("[bold green]✔ Дашборд успешно отправлен в Telegram![/bold green]")
+        else:
+            console.print("[dim yellow]ℹ Сообщение выведено в консоль (напишите /start боту @Butrix_bot для связки).[/dim yellow]")
+
+    asyncio.run(_show())
 
 
 if __name__ == "__main__":

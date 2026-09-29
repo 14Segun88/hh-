@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Dict, Optional
 from hh_agent.config import CandidateProfile
@@ -43,17 +44,19 @@ class ChatNegotiationAgent:
         # Tier 1: Local Qwen 2.5 7B Fast Message Classification
         # -------------------------------------------------------------
         try:
-            classification: MessageClassification = (
-                await self.local_client.classify_message(
+            classification: MessageClassification = await asyncio.wait_for(
+                self.local_client.classify_message(
                     message_text=last_message,
                     vacancy_title=vacancy_title,
                     company_name=company,
-                )
+                ),
+                timeout=8.0,
             )
         except Exception as e:
-            logger.warning("Local Qwen classification error on topic %s: %s", topic_id, e)
+            logger.warning("Local Qwen classification error/timeout on topic %s: %s", topic_id, e)
+            category = "QUESTION" if ("?" in last_message or "анкет" in last_message.lower()) else "OTHER"
             classification = MessageClassification(
-                category="OTHER",
+                category=category,
                 short_summary=last_message[:100],
             )
 
@@ -63,7 +66,7 @@ class ChatNegotiationAgent:
         # -------------------------------------------------------------
         # Tier 2: Deep NVIDIA NIM Response Drafting (Invitations & Questions)
         # -------------------------------------------------------------
-        if classification.category in ("INVITATION", "QUESTION"):
+        if classification.category in ("INVITATION", "QUESTION", "OTHER"):
             try:
                 reply_obj: DraftedReply = await self.nim_client.draft_negotiation_reply(
                     incoming_message=last_message,
@@ -75,8 +78,31 @@ class ChatNegotiationAgent:
                 drafted_reply = reply_obj.reply_text
                 status = "DRAFTED"
             except Exception as e:
-                logger.error("NIM reply drafting error on topic %s: %s", topic_id, e)
-                drafted_reply = "Добрый день! Спасибо за обратную связь. Готов обсудить детали."
+                logger.warning("NIM reply drafting error on topic %s: %s, using Qwen fallback", topic_id, e)
+                try:
+                    fallback_prompt = (
+                        f"Ты карьерный агент Георгия Салюка (AI-инженер / LLM-разработчик). "
+                        f"Работодатель {company} (вакансия {vacancy_title}) написал: «{last_message}». "
+                        f"Напиши вежливый, уверенный и профессиональный ответ на русском языке. "
+                        f"Факты: 3.5 года опыта, стек: Python, FastAPI, Llama-3.3, Weaviate RAG, Docker; "
+                        f"проекты MOGE (оркестратор 8 агентов) и PD Document Analyzer. "
+                        f"Ожидания: 220 000 руб. на руки, удаленно (Краснодар). Контакты: Telegram @Segun14, тел. +79180452504. "
+                        f"Тон: деловой, дружелюбный, лаконичный. Верни ТОЛЬКО текст сообщения без кавычек и предисловий."
+                    )
+                    drafted_reply = await self.local_client._chat_completion(
+                        messages=[{"role": "user", "content": fallback_prompt}],
+                        temperature=0.3,
+                    )
+                    drafted_reply = drafted_reply.strip().strip('"')
+                    status = "DRAFTED"
+                except Exception as e2:
+                    logger.error("Local fallback reply drafting error: %s", e2)
+                    drafted_reply = (
+                        f"Здравствуйте! Спасибо за обратную связь по позиции «{vacancy_title}». "
+                        f"Я готов ответить на ваши вопросы и провести техническое интервью. "
+                        f"Для оперативной связи: Telegram @Segun14 или телефон +7 (918) 045-25-04."
+                    )
+                    status = "DRAFTED"
 
         # Save to database
         record = {

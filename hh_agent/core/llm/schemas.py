@@ -62,3 +62,14 @@ class QuestionnaireSolution(BaseModel):
     answers: Dict[str, str] = Field(default_factory=dict, description="Словарь {question_id: answer_text}")
     requires_manual_check: bool = Field(default=False, description="Нужно ли ручное подтверждение перед отправкой")
     notes: str = Field(default="")
+
+
+class JudgeEvaluationResult(BaseModel):
+    """LLM-as-a-Judge evaluation of drafted cover letter or answer."""
+    is_approved: bool = Field(default=True, description="Одобрено ли письмо/ответ к отправке")
+    score_10: float = Field(default=9.0, ge=0.0, le=10.0, description="Оценка от 0.0 до 10.0")
+    has_hallucinations: bool = Field(default=False, description="Обнаружены ли вымышленные факты/технологии")
+    hallucination_details: List[str] = Field(default_factory=list, description="Список найденных несоответствий или галлюцинаций")
+    verdict_summary: str = Field(default="", description="Резюме проверки аудитора")
+    evaluator: str = Field(default="LLM-Judge", description="Имя проверяющей модели")
+

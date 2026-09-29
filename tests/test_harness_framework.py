@@ -78,3 +78,15 @@ def test_prompt_builder():
     system_text = draft_prompt[0]["content"]
     assert "КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО" in system_text
     assert "LESSONS.MD" in system_text
+
+
+def test_browser_harness_stealth_and_dynamic_ua():
+    from hh_agent.core.browser.harness import BrowserHarness
+    harness = BrowserHarness()
+    ua = harness._get_dynamic_user_agent()
+    assert "Mozilla/5.0" in ua
+    assert "Chrome/" in ua
+    assert "Safari/537.36" in ua
+    # Must NOT be the old hardcoded Chrome/124
+    assert "Chrome/124.0.0.0" not in ua
+

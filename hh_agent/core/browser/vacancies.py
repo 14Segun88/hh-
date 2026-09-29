@@ -20,18 +20,18 @@ class VacancyBrowser:
     ) -> str:
         """Construct hh.ru search URL targeting recent vacancies (yesterday + today)."""
         base = "https://hh.ru/search/vacancy"
-        params = {
-            "text": query,
-            "order_by": config.order_by,
-            "search_period": str(search_period_days),  # 2 days: yesterday + today
-            "items_on_page": "20",
-        }
+        params: List[tuple[str, str]] = [
+            ("text", query),
+            ("order_by", config.order_by),
+            ("search_period", str(search_period_days)),  # 2 days: yesterday + today
+            ("items_on_page", "20"),
+        ]
         if config.area_id:
-            params["area"] = str(config.area_id)
+            params.append(("area", str(config.area_id)))
         if config.only_remote:
-            params["schedule"] = "remote"
+            params.append(("schedule", "remote"))
         for exp in config.experience:
-            params.setdefault("experience", exp)
+            params.append(("experience", exp))
 
         return f"{base}?{urllib.parse.urlencode(params)}"
 

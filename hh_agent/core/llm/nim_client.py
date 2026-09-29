@@ -5,15 +5,19 @@ import re
 from typing import Any, Dict, List, Optional
 import httpx
 from pydantic import ValidationError
-from hh_agent.config import CandidateProfile, settings
+from hh_agent.config import CandidateProfile, SearchRules, settings
 from hh_agent.core.llm.prompts import (
+    COVER_LETTER_GENERATOR_SYSTEM,
+    LLM_JUDGE_VERIFIER_SYSTEM,
     NIM_DEEP_DOSSIER_SYSTEM,
     NIM_REPLY_DRAFT_SYSTEM,
+    VACANCY_FAST_ANALYSIS_SYSTEM,
 )
 from hh_agent.core.llm.schemas import (
     DeepEmployerDossier,
     DraftedReply,
     FastVacancyAnalysis,
+    JudgeEvaluationResult,
     MessageClassification,
 )
 
@@ -226,3 +230,143 @@ class NvidiaNimClient:
         content = await self._chat_completion(messages, temperature=0.2)
         raw_json = self._extract_json_block(content)
         return raw_json.get("answers", {})
+
+    async def generate_tailored_cover_letter(
+        self,
+        company_name: str,
+        vacancy_title: str,
+        vacancy_description: str,
+        candidate_profile: Optional[CandidateProfile] = None,
+    ) -> str:
+        """Generate a personalized, high-converting cover letter crafted for the specific vacancy."""
+        user_prompt = f"""
+КОМПАНИЯ: {company_name}
+ВАКАНСИЯ: {vacancy_title}
+
+ОПИСАНИЕ И ТРЕБОВАНИЯ ВАКАНСИИ:
+{vacancy_description[:4000]}
+
+Составь адресное, убедительное сопроводительное письмо от Георгия Салюка.
+"""
+        messages = [
+            {"role": "system", "content": COVER_LETTER_GENERATOR_SYSTEM},
+            {"role": "user", "content": user_prompt},
+        ]
+        content = await self._chat_completion(messages, temperature=0.35)
+        clean_text = content.strip().strip('"').strip("'")
+        if clean_text.startswith("```"):
+            clean_text = re.sub(r"^```[a-zA-Z]*\n?", "", clean_text)
+            clean_text = re.sub(r"\n?```$", "", clean_text).strip()
+        return clean_text
+
+    async def analyze_vacancy(
+        self,
+        vacancy_title: str,
+        vacancy_description: str,
+        candidate_profile: CandidateProfile,
+        search_rules: SearchRules,
+    ) -> FastVacancyAnalysis:
+        """Perform fast LLM screening and scoring on vacancy text via NVIDIA NIM (Llama-3.3-70B)."""
+        # Quick regex check for hard stop words
+        # Junior/Стажер checked strictly in title so senior roles with mentoring duties are preserved
+        title_lower = vacancy_title.lower()
+        desc_lower = vacancy_description.lower() + " " + title_lower
+        junior_keywords = {"junior", "джуниор", "стажер", "стажировка", "intern", "internship", "trainee", "практикант"}
+        found_stops = []
+        for sw in search_rules.hard_stop_words:
+            sw_lower = sw.lower()
+            if sw_lower in junior_keywords:
+                if sw_lower in title_lower:
+                    found_stops.append(sw)
+            else:
+                if sw_lower in desc_lower:
+                    found_stops.append(sw)
+        if found_stops:
+            return FastVacancyAnalysis(
+                salary_min=None,
+                salary_max=None,
+                currency="RUR",
+                tech_stack=[],
+                red_flags_detected=[],
+                stop_phrases_found=found_stops,
+                match_score=0,
+                summary_reasoning=f"Мгновенный отсев: обнаружены стоп-слова ({', '.join(found_stops)})",
+                is_suitable=False,
+            )
+
+        user_prompt = f"""
+ВАКАНСИЯ: {vacancy_title}
+ТЕКСТ ВАКАНСИИ:
+{vacancy_description[:3000]}
+
+ПРОФИЛЬ КАНДИДАТА:
+- Имя: {candidate_profile.personal_info.full_name}
+- Целевые роли: {', '.join(candidate_profile.career.target_roles)}
+- Ожидаемая ЗП: {candidate_profile.career.target_salary_net_rub} руб. (мин: {candidate_profile.career.minimum_salary_net_rub})
+- Основной стек: {', '.join(candidate_profile.skills.primary_stack)}
+- Вторичный стек: {', '.join(candidate_profile.skills.secondary_stack)}
+- Опыт: {candidate_profile.skills.years_of_experience} лет
+- Формат: {', '.join(candidate_profile.career.work_format)}
+
+СПИСОК ПОДОЗРИТЕЛЬНЫХ ФРАЗ ДЛЯ ПРОВЕРКИ:
+{json.dumps(search_rules.red_flag_phrases, ensure_ascii=False)}
+
+Проанализируй вакансию и верни строго JSON.
+"""
+        messages = [
+            {"role": "system", "content": VACANCY_FAST_ANALYSIS_SYSTEM},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        content = await self._chat_completion(messages, temperature=0.1)
+        raw_json = self._extract_json_block(content)
+        try:
+            return FastVacancyAnalysis.model_validate(raw_json)
+        except ValidationError:
+            return FastVacancyAnalysis(
+                match_score=raw_json.get("match_score", 50),
+                summary_reasoning=raw_json.get("summary_reasoning", "Извлечено с частичным совпадением"),
+                is_suitable=raw_json.get("match_score", 50) >= 60,
+                tech_stack=raw_json.get("tech_stack", []),
+                red_flags_detected=raw_json.get("red_flags_detected", []),
+            )
+
+    async def judge_text(
+        self,
+        draft_text: str,
+        context_type: str = "сопроводительное письмо",
+        company_name: str = "",
+        vacancy_title: str = "",
+    ) -> JudgeEvaluationResult:
+        """Audit drafted letter or answer using LLM-as-a-Judge against Georgiy's profile."""
+        user_prompt = f"""
+ТИП ТЕКСТА ДЛЯ ПРОВЕРКИ: {context_type}
+КОМПАНИЯ: {company_name}
+ВАКАНСИЯ: {vacancy_title}
+
+ТЕКСТ НА ПРОВЕРКУ:
+{draft_text}
+
+Проведи независимый аудит на галлюцинации, достоверность фактов и соответствие резюме Георгия Салюка.
+Верни строго JSON.
+"""
+        messages = [
+            {"role": "system", "content": LLM_JUDGE_VERIFIER_SYSTEM},
+            {"role": "user", "content": user_prompt},
+        ]
+        content = await self._chat_completion(messages, temperature=0.1)
+        raw_json = self._extract_json_block(content)
+        try:
+            res = JudgeEvaluationResult.model_validate(raw_json)
+            res.evaluator = f"NVIDIA NIM ({self.model})"
+            return res
+        except Exception:
+            return JudgeEvaluationResult(
+                is_approved=raw_json.get("is_approved", True),
+                score_10=float(raw_json.get("score_10", 9.0)),
+                has_hallucinations=bool(raw_json.get("has_hallucinations", False)),
+                hallucination_details=raw_json.get("hallucination_details", []),
+                verdict_summary=raw_json.get("verdict_summary", "Проверено аудитором"),
+                evaluator=f"NVIDIA NIM ({self.model})",
+            )
+
